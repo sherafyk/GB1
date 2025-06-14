@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import smtplib
+import logging
 from email.message import EmailMessage
 
 import openai
@@ -9,17 +10,25 @@ import openai
 from .db import log_submission
 from models import prompts
 
+
+logger = logging.getLogger(__name__)
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
 
 def _call_openai(prompt: str) -> str:
-    response = openai.ChatCompletion.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    return response.choices[0].message.content.strip()
+    """Call the OpenAI ChatCompletion API and return the text content."""
+    try:
+        response = openai.ChatCompletion.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as exc:
+        logger.error("OpenAI API call failed: %s", exc, exc_info=True)
+        raise
 
 
 async def analyze_chunk(kind: str, content: str) -> dict:
@@ -39,7 +48,11 @@ async def generate_questions(data: dict) -> list:
     prompt = prompts.PROMPTS["question_gen"].format(data=json.dumps(data))
 
     def run():
-        return _call_openai(prompt)
+        try:
+            return _call_openai(prompt)
+        except Exception as exc:
+            logger.error("Failed to generate questions: %s", exc, exc_info=True)
+            return ""
 
     text = await asyncio.to_thread(run)
     questions = []
@@ -57,7 +70,11 @@ async def generate_followups(data: dict, answers: list) -> list:
     prompt = prompts.PROMPTS["followup_gen"].format(data=payload)
 
     def run():
-        return _call_openai(prompt)
+        try:
+            return _call_openai(prompt)
+        except Exception as exc:
+            logger.error("Failed to generate follow-up questions: %s", exc, exc_info=True)
+            return ""
 
     text = await asyncio.to_thread(run)
     questions = []
@@ -77,7 +94,8 @@ async def extract_structured_data(text: str) -> dict:
         try:
             resp = _call_openai(prompt)
             return json.loads(resp)
-        except Exception:
+        except Exception as exc:
+            logger.error("Structured data extraction failed: %s", exc, exc_info=True)
             return {"company": {}, "context": {}}
 
     return await asyncio.to_thread(run)
