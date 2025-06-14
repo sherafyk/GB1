@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-multipart
+aiofiles
+pydantic
+httpx
+jinja2
+openai
+python-dotenv
+tqdm
+pdfplumber
+pytesseract
+Pillow
+textract
+# sqlite3 (built-in)
