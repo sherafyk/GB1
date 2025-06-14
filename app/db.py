@@ -1,11 +1,17 @@
+import os
 import sqlite3
 import json
+from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict
 
 from passlib.hash import bcrypt
 
-DB_PATH = "app.db"
+# Determine absolute path to the SQLite database. This avoids issues where the
+# working directory differs from the application root (e.g. when running under
+# Docker or tests).
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = os.getenv("DB_PATH", str(BASE_DIR / "app.db"))
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
