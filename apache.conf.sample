@@ -1,0 +1,5 @@
+<VirtualHost *:80>
+    ServerName example.com
+    ProxyPass / http://localhost:57802/
+    ProxyPassReverse / http://localhost:57802/
+</VirtualHost>

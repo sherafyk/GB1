@@ -8,9 +8,12 @@ jinja2
 openai
 python-dotenv
 tqdm
+# pdfplumber
 pdfplumber
 pytesseract
 Pillow
-textract
+# textract is optional for advanced extraction and has install issues
+# textract==1.6.4
 # sqlite3 (built-in)
 markdown
+passlib[bcrypt]
