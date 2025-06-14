@@ -13,6 +13,7 @@ This project provides a FastAPI-based web application for AI-driven risk analysi
    docker-compose up --build
    ```
 4. Open `http://localhost:57802` in your browser to see the landing page.
+   From there you can launch the multi-step data collection wizard.
 
 ## Development
 Run the app directly with uvicorn:
