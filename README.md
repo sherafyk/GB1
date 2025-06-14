@@ -103,7 +103,7 @@ docker-compose up -d --build
 ```
 View runtime logs with:
 ```bash
-docker compose logs -f app
+docker logs gb1-app-1 --tail=100
 ```
 
 ## Troubleshooting
