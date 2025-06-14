@@ -16,10 +16,23 @@ This project provides a FastAPI-based web application for AI-driven risk analysi
    From there you can launch the multi-step data collection wizard.
    After confirming your data, the app will call OpenAI to generate a markdown
    risk report and email it to the configured address.
+5. Create an initial admin user:
+   ```bash
+   docker-compose run app python -m app.create_user admin yourpassword --role admin
+   ```
+   Then visit `/login` to sign in.
 
 ## Development
 Run the app directly with uvicorn:
 ```bash
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 57802
+```
+
+### Apache Reverse Proxy
+For production you can place the app behind Apache. A sample configuration is provided in `apache.conf.sample`:
+
+```apache
+ProxyPass / http://localhost:57802/
+ProxyPassReverse / http://localhost:57802/
 ```

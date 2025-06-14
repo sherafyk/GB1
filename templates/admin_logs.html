@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Submission Logs{% endblock %}
+{% block content %}
+<h2 class="text-lg mb-4">Submission Logs</h2>
+<table class="w-full">
+  <tr><th class="text-left">ID</th><th class="text-left">Timestamp</th><th class="text-left">Score</th></tr>
+  {% for l in logs %}
+  <tr class="border-t border-gray-700">
+    <td>{{ l.id }}</td>
+    <td>{{ l.timestamp }}</td>
+    <td>{{ "%.1f"|format(l.score) }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

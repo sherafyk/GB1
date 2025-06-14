@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Manage Users{% endblock %}
+{% block content %}
+<h2 class="text-lg mb-4">Users</h2>
+<table class="w-full mb-4">
+  <tr><th class="text-left">Username</th><th class="text-left">Role</th><th></th></tr>
+  {% for u in users %}
+  <tr class="border-t border-gray-700">
+    <td>{{ u.username }}</td>
+    <td>{{ u.role }}</td>
+    <td>
+      <form method="post" action="/admin/users/delete" class="inline">
+        <input type="hidden" name="username" value="{{ u.username }}">
+        <button type="submit" class="text-red-500">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+<h3 class="text-lg mb-2">Add User</h3>
+<form method="post" action="/admin/users/add" class="space-y-2 max-w-sm">
+  <div>
+    <label class="block mb-1">Username</label>
+    <input type="text" name="username" required class="w-full p-2 rounded bg-gray-800">
+  </div>
+  <div>
+    <label class="block mb-1">Password</label>
+    <input type="password" name="password" required class="w-full p-2 rounded bg-gray-800">
+  </div>
+  <div>
+    <label class="block mb-1">Role</label>
+    <select name="role" class="w-full p-2 rounded bg-gray-800">
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </select>
+  </div>
+  <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">Add</button>
+</form>
+{% endblock %}

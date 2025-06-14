@@ -11,6 +11,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 import markdown
 
+from . import db
+
 from .analysis import analyze
 
 
@@ -23,18 +25,63 @@ app.add_middleware(
 
 templates = Jinja2Templates(directory="templates")
 
+
+def get_current_user(request: Request):
+    return request.session.get("user")
+
+
+def require_user(request: Request):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+
+def require_admin(request: Request):
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        return RedirectResponse(url="/", status_code=303)
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_get(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.post("/login")
+async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+    user = db.verify_user(username, password)
+    if user:
+        request.session["user"] = user
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": "Invalid credentials"},
+        status_code=400,
+    )
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)
 
 
 def save_uploads(files: List[UploadFile], folder: str) -> List[str]:
     os.makedirs(folder, exist_ok=True)
     paths = []
     for file in files:
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in [".pdf", ".png", ".jpg", ".jpeg"]:
+            continue
+        content = file.file.read()
+        if len(content) > 5 * 1024 * 1024:
+            continue
         file_path = os.path.join(folder, file.filename)
         with open(file_path, "wb") as out_file:
-            out_file.write(file.file.read())
+            out_file.write(content)
         paths.append(file_path)
     return paths
 
@@ -56,6 +103,9 @@ def extract_text(path: str) -> str:
 
 @app.get("/wizard/company", response_class=HTMLResponse)
 async def wizard_company(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
     data = request.session.get("form", {}).get("company", {})
     return templates.TemplateResponse("company.html", {"request": request, "data": data})
 
@@ -67,6 +117,9 @@ async def wizard_company_post(request: Request,
                               address: str = Form(...),
                               country: str = Form(...),
                               directors: str = Form(...)):
+    resp = require_user(request)
+    if resp:
+        return resp
     request.session.setdefault("form", {})["company"] = {
         "name": name,
         "registration": registration,
@@ -81,6 +134,9 @@ async def wizard_company_post(request: Request,
 
 @app.get("/wizard/context", response_class=HTMLResponse)
 async def wizard_context(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
     data = request.session.get("form", {}).get("context", {})
     return templates.TemplateResponse("context.html", {"request": request, "data": data})
 
@@ -90,6 +146,9 @@ async def wizard_context_post(request: Request,
                               transaction_type: str = Form(...),
                               description: str = Form(...),
                               notes: str = Form("")):
+    resp = require_user(request)
+    if resp:
+        return resp
     request.session.setdefault("form", {})["context"] = {
         "transaction_type": transaction_type,
         "description": description,
@@ -100,11 +159,17 @@ async def wizard_context_post(request: Request,
 
 @app.get("/wizard/upload", response_class=HTMLResponse)
 async def wizard_upload(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
     return templates.TemplateResponse("upload.html", {"request": request})
 
 
 @app.post("/wizard/upload")
 async def wizard_upload_post(request: Request, files: List[UploadFile] = File(...)):
+    resp = require_user(request)
+    if resp:
+        return resp
     uid = request.session.get("upload_id")
     folder = os.path.join(UPLOAD_DIR, uid)
     paths = save_uploads(files, folder)
@@ -116,6 +181,9 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
 
 @app.get("/wizard/review", response_class=HTMLResponse)
 async def wizard_review(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
     data = request.session.get("form", {})
     extracted = request.session.get("extracted_text", "")
     return templates.TemplateResponse("review.html", {"request": request, "data": data, "extracted": extracted})
@@ -123,17 +191,26 @@ async def wizard_review(request: Request):
 
 @app.post("/wizard/review")
 async def wizard_review_post(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
     return RedirectResponse(url="/wizard/confirm", status_code=303)
 
 
 @app.get("/wizard/confirm", response_class=HTMLResponse)
 async def wizard_confirm(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
     data = request.session.get("form", {})
     return templates.TemplateResponse("confirm.html", {"request": request, "data": data})
 
 
 @app.post("/wizard/confirm")
 async def wizard_confirm_post(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
     data = request.session.get("form", {})
     data["extracted_text"] = request.session.get("extracted_text", "")
     report_md = await analyze(data)
@@ -142,3 +219,47 @@ async def wizard_confirm_post(request: Request):
     return templates.TemplateResponse(
         "report.html", {"request": request, "report": html_report}
     )
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_index(request: Request):
+    resp = require_admin(request)
+    if resp:
+        return resp
+    return templates.TemplateResponse("admin.html", {"request": request})
+
+
+@app.get("/admin/users", response_class=HTMLResponse)
+async def admin_users(request: Request):
+    resp = require_admin(request)
+    if resp:
+        return resp
+    users = db.list_users()
+    return templates.TemplateResponse("admin_users.html", {"request": request, "users": users})
+
+
+@app.post("/admin/users/add")
+async def admin_users_add(request: Request, username: str = Form(...), password: str = Form(...), role: str = Form("user")):
+    resp = require_admin(request)
+    if resp:
+        return resp
+    db.create_user(username, password, role)
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+
+@app.post("/admin/users/delete")
+async def admin_users_delete(request: Request, username: str = Form(...)):
+    resp = require_admin(request)
+    if resp:
+        return resp
+    db.delete_user(username)
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+
+@app.get("/admin/logs", response_class=HTMLResponse)
+async def admin_logs(request: Request):
+    resp = require_admin(request)
+    if resp:
+        return resp
+    logs = db.get_logs()
+    return templates.TemplateResponse("admin_logs.html", {"request": request, "logs": logs})
