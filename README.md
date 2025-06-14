@@ -67,16 +67,14 @@ apache.conf.sample  Example Apache reverse proxy config
 ## Using the Application
 
 1. Log in with your credentials.
-2. Click **Start New Assessment** on the landing page to launch the wizard.
-3. Complete each step:
-   - **Company Details** &ndash; name, registration, address, country and directors.
-   - **Deal Context** &ndash; transaction type, description and notes.
-   - **Upload Documents** &ndash; PDF or image files (max 5&nbsp;MB each). The text is extracted and stored temporarily.
+2. Click **Start New Assessment** on the landing page to upload your documents.
+3. After upload the AI extracts company details and deal context automatically.
+4. Review the extracted information and continue to the questions:
    - **Answer Questions** &ndash; the AI generates ten yes/no questions. Provide answers and optional context.
    - **Follow-Up Questions** &ndash; a second set of ten questions generated from your previous answers.
-   - **Confirmation** &ndash; review your data and run the analysis.
-4. When analysis completes you will see the markdown report in the browser. If SMTP is configured it is also emailed to the address specified in `.env`.
-5. Admin users can manage accounts and view submission logs under `/admin`.
+   - **Confirmation** &ndash; run the analysis and view the report.
+5. When analysis completes you will see the markdown report in the browser. If SMTP is configured it is also emailed to the address specified in `.env`.
+6. Admin users can manage accounts and view submission logs under `/admin`.
 
 ## Development Workflow
 
