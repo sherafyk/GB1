@@ -6,4 +6,7 @@ services:
       - "57802:57802"
     volumes:
       - ./uploads:/app/uploads
-      - ./app.db:/app/app.db
+      - ./data:/app/data
+    environment:
+      # Path to SQLite database inside the container
+      DB_PATH: /app/data/app.db
