@@ -13,7 +13,7 @@ import markdown
 
 from . import db
 
-from .analysis import analyze
+from .analysis import analyze, generate_questions, generate_followups
 
 
 UPLOAD_DIR = "uploads"
@@ -194,6 +194,102 @@ async def wizard_review_post(request: Request):
     resp = require_user(request)
     if resp:
         return resp
+    data = request.session.get("form", {})
+    questions = await generate_questions(data)
+    request.session["questions_round1"] = questions
+    return RedirectResponse(url="/wizard/questions1", status_code=303)
+
+
+@app.get("/wizard/questions1", response_class=HTMLResponse)
+async def wizard_questions1(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
+    questions = request.session.get("questions_round1", [])
+    return templates.TemplateResponse(
+        "questions.html",
+        {
+            "request": request,
+            "questions": questions,
+            "step": "Step 2 of 4: Answer 10 Key Questions",
+            "post_url": "/wizard/questions1",
+        },
+    )
+
+
+@app.post("/wizard/questions1")
+async def wizard_questions1_post(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
+    form = await request.form()
+    questions = request.session.get("questions_round1", [])
+    answers = []
+    for i, q in enumerate(questions, 1):
+        ans = form.get(f"q{i}")
+        if not ans:
+            return templates.TemplateResponse(
+                "questions.html",
+                {
+                    "request": request,
+                    "questions": questions,
+                    "step": "Step 2 of 4: Answer 10 Key Questions",
+                    "post_url": "/wizard/questions1",
+                    "error": "Please answer all questions",
+                },
+                status_code=400,
+            )
+        ctx = form.get(f"q{i}_context", "")
+        answers.append({"question": q, "answer": ans, "context": ctx})
+    request.session["answers_round1"] = answers
+    data = request.session.get("form", {})
+    followups = await generate_followups(data, answers)
+    request.session["questions_round2"] = followups
+    return RedirectResponse(url="/wizard/questions2", status_code=303)
+
+
+@app.get("/wizard/questions2", response_class=HTMLResponse)
+async def wizard_questions2(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
+    questions = request.session.get("questions_round2", [])
+    return templates.TemplateResponse(
+        "questions.html",
+        {
+            "request": request,
+            "questions": questions,
+            "step": "Step 3 of 4: Answer Follow-Up Questions",
+            "post_url": "/wizard/questions2",
+        },
+    )
+
+
+@app.post("/wizard/questions2")
+async def wizard_questions2_post(request: Request):
+    resp = require_user(request)
+    if resp:
+        return resp
+    form = await request.form()
+    questions = request.session.get("questions_round2", [])
+    answers = []
+    for i, q in enumerate(questions, 1):
+        ans = form.get(f"q{i}")
+        if not ans:
+            return templates.TemplateResponse(
+                "questions.html",
+                {
+                    "request": request,
+                    "questions": questions,
+                    "step": "Step 3 of 4: Answer Follow-Up Questions",
+                    "post_url": "/wizard/questions2",
+                    "error": "Please answer all questions",
+                },
+                status_code=400,
+            )
+        ctx = form.get(f"q{i}_context", "")
+        answers.append({"question": q, "answer": ans, "context": ctx})
+    request.session["answers_round2"] = answers
     return RedirectResponse(url="/wizard/confirm", status_code=303)
 
 
@@ -213,7 +309,8 @@ async def wizard_confirm_post(request: Request):
         return resp
     data = request.session.get("form", {})
     data["extracted_text"] = request.session.get("extracted_text", "")
-    report_md = await analyze(data)
+    qa = request.session.get("answers_round1", []) + request.session.get("answers_round2", [])
+    report_md = await analyze(data, qa)
     html_report = markdown.markdown(report_md)
     request.session.clear()
     return templates.TemplateResponse(

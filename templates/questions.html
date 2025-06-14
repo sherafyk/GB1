@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Questions{% endblock %}
+{% block content %}
+<h2 class="text-lg mb-4">{{ step }}</h2>
+{% if error %}<p class="text-red-500 mb-2">{{ error }}</p>{% endif %}
+<form method="post" class="space-y-6">
+{% for q in questions %}
+  <div class="mb-6 p-4 bg-gray-800 rounded-xl shadow">
+    <label class="block text-lg text-gray-200 font-semibold mb-2">{{ loop.index }}. {{ q }}</label>
+    <div class="flex gap-8 mb-2">
+      <label><input type="radio" name="q{{ loop.index }}" value="Yes" required> Yes</label>
+      <label><input type="radio" name="q{{ loop.index }}" value="No" required> No</label>
+    </div>
+    <textarea name="q{{ loop.index }}_context" rows="2" class="w-full rounded-md bg-gray-900 text-gray-200 p-2" placeholder="Optional: Add more context..."></textarea>
+  </div>
+{% endfor %}
+  <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">Next</button>
+</form>
+{% endblock %}
