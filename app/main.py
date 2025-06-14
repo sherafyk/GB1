@@ -9,6 +9,9 @@ from fastapi import FastAPI, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+import markdown
+
+from .analysis import analyze
 
 
 UPLOAD_DIR = "uploads"
@@ -131,5 +134,11 @@ async def wizard_confirm(request: Request):
 
 @app.post("/wizard/confirm")
 async def wizard_confirm_post(request: Request):
+    data = request.session.get("form", {})
+    data["extracted_text"] = request.session.get("extracted_text", "")
+    report_md = await analyze(data)
+    html_report = markdown.markdown(report_md)
     request.session.clear()
-    return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        "report.html", {"request": request, "report": html_report}
+    )

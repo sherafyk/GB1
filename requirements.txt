@@ -13,3 +13,4 @@ pytesseract
 Pillow
 textract
 # sqlite3 (built-in)
+markdown
