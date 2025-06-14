@@ -47,14 +47,17 @@ apache.conf.sample  Example Apache reverse proxy config
    SMTP_USER=username
    SMTP_PASS=password
    FROM_EMAIL=reports@example.com
-   APP_SECRET_KEY=change-me
-   ```
-   Only `OPENAI_API_KEY` and `APP_SECRET_KEY` are mandatory. Email settings are optional but required for outbound reports.
+  APP_SECRET_KEY=change-me
+  # Optional: override where the SQLite DB is stored
+  DB_PATH=/app/data/app.db
+  ```
+  Only `OPENAI_API_KEY` and `APP_SECRET_KEY` are mandatory. Email settings are optional but required for outbound reports.
+   Create a local `data/` directory (next to `docker-compose.yml`) if it does not exist. The SQLite file will be stored here.
 3. **Build and run the container**
    ```bash
    docker-compose up -d --build
    ```
-   The app listens on port **57802** by default and stores uploaded files in the `uploads/` folder. The SQLite database file `app.db` is mapped to the project directory so data persists between commands.
+   The app listens on port **57802** by default and stores uploaded files in the `uploads/` folder. A `data/` directory is mounted into the container for the SQLite database so data persists between runs.
 4. **Create an initial admin user**
    ```bash
    docker-compose run app python -m app.create_user admin yourpassword --role admin
@@ -108,7 +111,7 @@ docker logs gb1-app-1 --tail=100
 
 ## Troubleshooting
 
-- **Cannot log in** &ndash; confirm you created a user and that `app.db` is writable by the container.
+- **Cannot log in** &ndash; confirm you created a user and that the database file in `data/` is writable by the container.
 - **No email delivered** &ndash; verify SMTP settings in `.env` and check container logs for errors.
 - **OpenAI errors** &ndash; ensure `OPENAI_API_KEY` is valid and your account has access to the chosen model.
 - **File extraction issues** &ndash; PDF and image extraction require `pdfplumber` and `pytesseract`. In the Docker image these libraries are installed but system dependencies may be required for advanced parsing.

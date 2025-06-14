@@ -13,6 +13,14 @@ from passlib.hash import bcrypt
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = os.getenv("DB_PATH", str(BASE_DIR / "app.db"))
 
+# Ensure the directory for the database exists. When the DB_PATH is a file in a
+# mounted volume (e.g. Docker), the parent directory may not exist at container
+# start which would lead to "unable to open database file" errors. Creating the
+# directory here allows SQLite to create the file automatically if it does not
+# already exist.
+db_file = Path(DB_PATH)
+db_file.parent.mkdir(parents=True, exist_ok=True)
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
