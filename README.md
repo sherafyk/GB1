@@ -1,6 +1,6 @@
-# GB1 Due Diligence App
+# Gene Due Diligence App
 
-GB1 is a self‑hosted web application that assists with the risk analysis of international companies. The app is built with **FastAPI** and uses OpenAI models to evaluate uploaded information and produce a markdown report. It is designed to run via Docker but can also be executed directly with Uvicorn for development.
+This project was created for the enterprise client **Gene**. Gene is a self‑hosted web application that assists with the risk analysis of international companies. The app is built with **FastAPI** and uses OpenAI models to evaluate uploaded information and produce a markdown report. It is designed to run via Docker but can also be executed directly with Uvicorn for development.
 
 ## Features
 
