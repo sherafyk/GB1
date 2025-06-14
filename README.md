@@ -112,6 +112,7 @@ docker logs gb1-app-1 --tail=100
 - **Cannot log in** &ndash; confirm you created a user and that the database file in `data/` is writable by the container.
 - **No email delivered** &ndash; verify SMTP settings in `.env` and check container logs for errors.
 - **OpenAI errors** &ndash; ensure `OPENAI_API_KEY` is valid and your account has access to the chosen model.
+- **No AI output** &ndash; the application logs a warning if `OPENAI_API_KEY` is missing. Ensure it is set and check logs for API errors.
 - **File extraction issues** &ndash; PDF and image extraction require `pdfplumber` and `pytesseract`. In the Docker image these libraries are installed but system dependencies may be required for advanced parsing.
 - **Changing the port** &ndash; edit `docker-compose.yml` and the `CMD` in `Dockerfile` if you need a different port.
 

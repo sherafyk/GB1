@@ -1,3 +1,5 @@
+"""FastAPI application providing the web interface and API endpoints."""
+
 import os
 import uuid
 from typing import List
@@ -32,31 +34,37 @@ templates = Jinja2Templates(directory="templates")
 
 
 def get_current_user(request: Request):
+    """Return the currently logged in user from the session or ``None``."""
     return request.session.get("user")
 
 
 def require_user(request: Request):
+    """Redirect to the login page if the request is unauthenticated."""
     if not get_current_user(request):
         return RedirectResponse(url="/login", status_code=303)
 
 
 def require_admin(request: Request):
+    """Ensure the user has admin role otherwise redirect to home."""
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
         return RedirectResponse(url="/", status_code=303)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
+    """Render the landing page."""
     return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_get(request: Request):
+    """Display the login form."""
     return templates.TemplateResponse("login.html", {"request": request})
 
 
 @app.post("/login")
 async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+    """Handle login form submission."""
     user = db.verify_user(username, password)
     if user:
         request.session["user"] = user
@@ -70,11 +78,14 @@ async def login_post(request: Request, username: str = Form(...), password: str 
 
 @app.get("/logout")
 async def logout(request: Request):
+    """Log out the current user and redirect to login."""
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
 
 
 def save_uploads(files: List[UploadFile], folder: str) -> List[str]:
+    """Persist uploaded files to ``folder`` and return their paths."""
+
     os.makedirs(folder, exist_ok=True)
     paths = []
     for file in files:
@@ -92,14 +103,18 @@ def save_uploads(files: List[UploadFile], folder: str) -> List[str]:
 
 
 def extract_text(path: str) -> str:
+    """Extract text from a PDF or image file."""
     if path.lower().endswith(".pdf"):
         try:
             with pdfplumber.open(path) as pdf:
+                # ``pdfplumber`` returns one object per page; we join them into
+                # a single string for analysis.
                 return "\n".join([page.extract_text() or "" for page in pdf.pages])
         except Exception:
             return ""
     elif path.lower().endswith((".png", ".jpg", ".jpeg")):
         try:
+            # OCR the image using Tesseract.
             return pytesseract.image_to_string(Image.open(path))
         except Exception:
             return ""
@@ -108,6 +123,7 @@ def extract_text(path: str) -> str:
 
 @app.get("/wizard/company", response_class=HTMLResponse)
 async def wizard_company(request: Request):
+    """Display the form for company details."""
     resp = require_user(request)
     if resp:
         return resp
@@ -122,6 +138,7 @@ async def wizard_company_post(request: Request,
                               address: str = Form(...),
                               country: str = Form(...),
                               directors: str = Form(...)):
+    """Store company information submitted from the form."""
     resp = require_user(request)
     if resp:
         return resp
@@ -139,6 +156,7 @@ async def wizard_company_post(request: Request,
 
 @app.get("/wizard/context", response_class=HTMLResponse)
 async def wizard_context(request: Request):
+    """Display the deal context form."""
     resp = require_user(request)
     if resp:
         return resp
@@ -151,6 +169,7 @@ async def wizard_context_post(request: Request,
                               transaction_type: str = Form(...),
                               description: str = Form(...),
                               notes: str = Form("")):
+    """Save deal context details and continue to file upload."""
     resp = require_user(request)
     if resp:
         return resp
@@ -164,6 +183,7 @@ async def wizard_context_post(request: Request,
 
 @app.get("/wizard/upload", response_class=HTMLResponse)
 async def wizard_upload(request: Request):
+    """Show the file upload page."""
     resp = require_user(request)
     if resp:
         return resp
@@ -174,6 +194,7 @@ async def wizard_upload(request: Request):
 
 @app.post("/wizard/upload")
 async def wizard_upload_post(request: Request, files: List[UploadFile] = File(...)):
+    """Handle document uploads and perform initial text extraction."""
     resp = require_user(request)
     if resp:
         return resp
@@ -193,6 +214,7 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
 
 @app.get("/wizard/review", response_class=HTMLResponse)
 async def wizard_review(request: Request):
+    """Allow the user to review extracted information before analysis."""
     resp = require_user(request)
     if resp:
         return resp
@@ -203,6 +225,7 @@ async def wizard_review(request: Request):
 
 @app.post("/wizard/review")
 async def wizard_review_post(request: Request):
+    """Generate the first round of questions from the collected data."""
     resp = require_user(request)
     if resp:
         return resp
@@ -214,6 +237,7 @@ async def wizard_review_post(request: Request):
 
 @app.get("/wizard/questions1", response_class=HTMLResponse)
 async def wizard_questions1(request: Request):
+    """Display the first set of AI-generated questions."""
     resp = require_user(request)
     if resp:
         return resp
@@ -231,6 +255,7 @@ async def wizard_questions1(request: Request):
 
 @app.post("/wizard/questions1")
 async def wizard_questions1_post(request: Request):
+    """Process answers to the first question round and fetch follow-ups."""
     resp = require_user(request)
     if resp:
         return resp
@@ -262,6 +287,7 @@ async def wizard_questions1_post(request: Request):
 
 @app.get("/wizard/questions2", response_class=HTMLResponse)
 async def wizard_questions2(request: Request):
+    """Display the second adaptive question round."""
     resp = require_user(request)
     if resp:
         return resp
@@ -279,6 +305,7 @@ async def wizard_questions2(request: Request):
 
 @app.post("/wizard/questions2")
 async def wizard_questions2_post(request: Request):
+    """Handle answers from the second round of questions."""
     resp = require_user(request)
     if resp:
         return resp
@@ -307,6 +334,7 @@ async def wizard_questions2_post(request: Request):
 
 @app.get("/wizard/confirm", response_class=HTMLResponse)
 async def wizard_confirm(request: Request):
+    """Show a summary and let the user trigger the final analysis."""
     resp = require_user(request)
     if resp:
         return resp
@@ -316,6 +344,7 @@ async def wizard_confirm(request: Request):
 
 @app.post("/wizard/confirm")
 async def wizard_confirm_post(request: Request):
+    """Run the analysis and display the final markdown report."""
     resp = require_user(request)
     if resp:
         return resp
@@ -332,6 +361,7 @@ async def wizard_confirm_post(request: Request):
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_index(request: Request):
+    """Admin dashboard landing page."""
     resp = require_admin(request)
     if resp:
         return resp
@@ -340,6 +370,7 @@ async def admin_index(request: Request):
 
 @app.get("/admin/users", response_class=HTMLResponse)
 async def admin_users(request: Request):
+    """List all users and provide management actions."""
     resp = require_admin(request)
     if resp:
         return resp
@@ -349,6 +380,7 @@ async def admin_users(request: Request):
 
 @app.post("/admin/users/add")
 async def admin_users_add(request: Request, username: str = Form(...), password: str = Form(...), role: str = Form("user")):
+    """Create a new user account."""
     resp = require_admin(request)
     if resp:
         return resp
@@ -358,6 +390,7 @@ async def admin_users_add(request: Request, username: str = Form(...), password:
 
 @app.post("/admin/users/delete")
 async def admin_users_delete(request: Request, username: str = Form(...)):
+    """Delete the specified user account."""
     resp = require_admin(request)
     if resp:
         return resp
@@ -367,6 +400,7 @@ async def admin_users_delete(request: Request, username: str = Form(...)):
 
 @app.get("/admin/logs", response_class=HTMLResponse)
 async def admin_logs(request: Request):
+    """Display recent submission logs."""
     resp = require_admin(request)
     if resp:
         return resp

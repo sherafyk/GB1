@@ -1,3 +1,5 @@
+"""Lightweight SQLite database helpers used by the application."""
+
 import os
 import sqlite3
 import json
@@ -22,6 +24,7 @@ db_file = Path(DB_PATH)
 db_file.parent.mkdir(parents=True, exist_ok=True)
 
 def init_db():
+    """Create database tables if they do not already exist."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         """
@@ -49,6 +52,7 @@ def init_db():
 
 
 def log_submission(data: dict, report: str, score: float) -> None:
+    """Persist an analysis submission to the database."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         "INSERT INTO submissions (timestamp, data, report, score) VALUES (?, ?, ?, ?)",
@@ -59,6 +63,7 @@ def log_submission(data: dict, report: str, score: float) -> None:
 
 
 def create_user(username: str, password: str, role: str = "user") -> None:
+    """Add a new user with ``username`` and ``role``."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
@@ -69,6 +74,7 @@ def create_user(username: str, password: str, role: str = "user") -> None:
 
 
 def get_user(username: str) -> Optional[Dict]:
+    """Retrieve a user record or ``None`` if it doesn't exist."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.execute(
         "SELECT username, password_hash, role FROM users WHERE username = ?",
@@ -82,6 +88,7 @@ def get_user(username: str) -> Optional[Dict]:
 
 
 def list_users() -> List[Dict]:
+    """Return all users ordered by username."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.execute("SELECT username, role FROM users ORDER BY username")
     rows = cur.fetchall()
@@ -90,6 +97,7 @@ def list_users() -> List[Dict]:
 
 
 def delete_user(username: str) -> None:
+    """Remove a user from the database."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute("DELETE FROM users WHERE username = ?", (username,))
     conn.commit()
@@ -97,6 +105,7 @@ def delete_user(username: str) -> None:
 
 
 def verify_user(username: str, password: str) -> Optional[Dict]:
+    """Validate a username/password pair and return the user info on success."""
     user = get_user(username)
     if user and bcrypt.verify(password, user["password_hash"]):
         return {"username": user["username"], "role": user["role"]}
@@ -104,6 +113,7 @@ def verify_user(username: str, password: str) -> Optional[Dict]:
 
 
 def get_logs(limit: int = 100) -> List[Dict]:
+    """Return the ``limit`` most recent submission records."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.execute(
         "SELECT id, timestamp, score FROM submissions ORDER BY id DESC LIMIT ?",
