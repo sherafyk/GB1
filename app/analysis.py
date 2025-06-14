@@ -35,13 +35,50 @@ async def analyze_chunk(kind: str, content: str) -> dict:
     return await asyncio.to_thread(run)
 
 
-async def analyze(data: dict) -> str:
+async def generate_questions(data: dict) -> list:
+    prompt = prompts.PROMPTS["question_gen"].format(data=json.dumps(data))
+
+    def run():
+        return _call_openai(prompt)
+
+    text = await asyncio.to_thread(run)
+    questions = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        line = line.lstrip("0123456789.- ")
+        questions.append(line)
+    return questions[:10]
+
+
+async def generate_followups(data: dict, answers: list) -> list:
+    payload = json.dumps({"data": data, "answers": answers})
+    prompt = prompts.PROMPTS["followup_gen"].format(data=payload)
+
+    def run():
+        return _call_openai(prompt)
+
+    text = await asyncio.to_thread(run)
+    questions = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        line = line.lstrip("0123456789.- ")
+        questions.append(line)
+    return questions[:10]
+
+
+async def analyze(data: dict, qa: list | None = None) -> str:
     chunks = {
         "company": json.dumps(data.get("company", {})),
         "context": json.dumps(data.get("context", {})),
     }
     if data.get("extracted_text"):
         chunks["documents"] = data["extracted_text"][:4000]
+    if qa:
+        chunks["qa"] = json.dumps(qa)
 
     results = {}
     for kind, text in chunks.items():
@@ -50,16 +87,28 @@ async def analyze(data: dict) -> str:
     overall = sum(r["score"] for r in results.values()) / len(results)
 
     md_lines = ["# Risk Analysis Report", f"**Overall Risk Score:** {overall:.1f}", ""]
-    name_map = {"company": "Company Info", "context": "Deal Context", "documents": "Documents"}
+    name_map = {"company": "Company Info", "context": "Deal Context", "documents": "Documents", "qa": "Q&A"}
     for kind, res in results.items():
         md_lines.append(f"## {name_map.get(kind, kind.title())}")
         md_lines.append(f"- **Score:** {res['score']}")
         md_lines.append(f"- **Rationale:** {res['rationale']}")
         md_lines.append(f"- **Next Steps:** {res['next_steps']}")
         md_lines.append("")
+
+    if qa:
+        md_lines.append("## Q&A Summary")
+        md_lines.append("| # | Question | Answer | Context |")
+        md_lines.append("|---|----------|-------|---------|")
+        for i, item in enumerate(qa, 1):
+            md_lines.append(f"| {i} | {item['question']} | {item['answer']} | {item.get('context','')} |")
+        md_lines.append("")
+
     md_lines.append("_This is an AI-driven risk analysis. Use in conjunction with human judgment._")
     report = "\n".join(md_lines)
 
+    if qa:
+        data = dict(data)
+        data["qa"] = qa
     log_submission(data, report, overall)
     await send_email(report)
 
