@@ -2,7 +2,7 @@
 <html class="dark">
 <head>
     <meta charset="utf-8">
-    <title>{% block title %}GB1{% endblock %}</title>
+    <title>{% block title %}Gene{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -11,7 +11,7 @@
 <body class="bg-gray-900 text-gray-100 min-h-screen">
     <header class="bg-gray-800 p-4 mb-4">
         <div class="flex justify-between items-center">
-            <h1 class="text-2xl font-bold">GB1 Due Diligence</h1>
+            <h1 class="text-2xl font-bold">Gene Due Diligence</h1>
             <div>
                 {% if request.session.get('user') %}
                     <span class="mr-2">{{ request.session['user']['username'] }}</span>
