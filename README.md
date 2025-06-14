@@ -54,7 +54,7 @@ apache.conf.sample  Example Apache reverse proxy config
    ```bash
    docker-compose up -d --build
    ```
-   The app listens on port **57802** by default and stores uploaded files in the `uploads/` folder.
+   The app listens on port **57802** by default and stores uploaded files in the `uploads/` folder. The SQLite database file `app.db` is mapped to the project directory so data persists between commands.
 4. **Create an initial admin user**
    ```bash
    docker-compose run app python -m app.create_user admin yourpassword --role admin
