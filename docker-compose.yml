@@ -6,3 +6,4 @@ services:
       - "57802:57802"
     volumes:
       - ./uploads:/app/uploads
+      - ./app.db:/app/app.db

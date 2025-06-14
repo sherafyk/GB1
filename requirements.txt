@@ -16,5 +16,5 @@ Pillow
 # textract==1.6.4
 # sqlite3 (built-in)
 markdown
-passlib[bcrypt]
+passlib[bcrypt]>=1.7.4
 itsdangerous
