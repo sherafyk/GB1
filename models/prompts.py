@@ -1,3 +1,5 @@
+"""Prompt templates used throughout the analysis workflow."""
+
 PROMPTS = {
     "company": (
         "Analyze the following company information for fraud and business risk. "
