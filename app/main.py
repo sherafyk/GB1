@@ -13,7 +13,12 @@ import markdown
 
 from . import db
 
-from .analysis import analyze, generate_questions, generate_followups
+from .analysis import (
+    analyze,
+    generate_questions,
+    generate_followups,
+    extract_structured_data,
+)
 
 
 UPLOAD_DIR = "uploads"
@@ -162,6 +167,8 @@ async def wizard_upload(request: Request):
     resp = require_user(request)
     if resp:
         return resp
+    if "upload_id" not in request.session:
+        request.session["upload_id"] = str(uuid.uuid4())
     return templates.TemplateResponse("upload.html", {"request": request})
 
 
@@ -174,8 +181,13 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     folder = os.path.join(UPLOAD_DIR, uid)
     paths = save_uploads(files, folder)
     texts = [extract_text(p) for p in paths]
-    request.session.setdefault("form", {})["files"] = paths
-    request.session["extracted_text"] = "\n".join(texts)
+    combined = "\n".join(texts)
+    form = request.session.setdefault("form", {})
+    form["files"] = paths
+    request.session["extracted_text"] = combined
+    structured = await extract_structured_data(combined)
+    form["company"] = structured.get("company", {})
+    form["context"] = structured.get("context", {})
     return RedirectResponse(url="/wizard/review", status_code=303)
 
 
@@ -211,7 +223,7 @@ async def wizard_questions1(request: Request):
         {
             "request": request,
             "questions": questions,
-            "step": "Step 2 of 4: Answer 10 Key Questions",
+            "step": "Step 3 of 5: Answer 10 Key Questions",
             "post_url": "/wizard/questions1",
         },
     )
@@ -233,7 +245,7 @@ async def wizard_questions1_post(request: Request):
                 {
                     "request": request,
                     "questions": questions,
-                    "step": "Step 2 of 4: Answer 10 Key Questions",
+                    "step": "Step 3 of 5: Answer 10 Key Questions",
                     "post_url": "/wizard/questions1",
                     "error": "Please answer all questions",
                 },
@@ -259,7 +271,7 @@ async def wizard_questions2(request: Request):
         {
             "request": request,
             "questions": questions,
-            "step": "Step 3 of 4: Answer Follow-Up Questions",
+            "step": "Step 4 of 5: Answer Follow-Up Questions",
             "post_url": "/wizard/questions2",
         },
     )
@@ -281,7 +293,7 @@ async def wizard_questions2_post(request: Request):
                 {
                     "request": request,
                     "questions": questions,
-                    "step": "Step 3 of 4: Answer Follow-Up Questions",
+                    "step": "Step 4 of 5: Answer Follow-Up Questions",
                     "post_url": "/wizard/questions2",
                     "error": "Please answer all questions",
                 },

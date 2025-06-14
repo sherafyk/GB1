@@ -70,6 +70,19 @@ async def generate_followups(data: dict, answers: list) -> list:
     return questions[:10]
 
 
+async def extract_structured_data(text: str) -> dict:
+    prompt = prompts.PROMPTS["extract"].format(data=text[:4000])
+
+    def run():
+        try:
+            resp = _call_openai(prompt)
+            return json.loads(resp)
+        except Exception:
+            return {"company": {}, "context": {}}
+
+    return await asyncio.to_thread(run)
+
+
 async def analyze(data: dict, qa: list | None = None) -> str:
     chunks = {
         "company": json.dumps(data.get("company", {})),
