@@ -1,9 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>GB1</title>
-</head>
-<body>
-    <h1>Hello World</h1>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Home - GB1{% endblock %}
+{% block content %}
+<div class="text-center mt-10">
+    <h2 class="text-xl mb-4">Welcome to GB1 Due Diligence</h2>
+    <a href="/wizard/company" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">Start New Assessment</a>
+</div>
+{% endblock %}

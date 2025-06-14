@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Review Data{% endblock %}
+{% block content %}
+<h2 class="text-lg mb-4">Review your information</h2>
+<div class="space-y-4">
+  <div class="p-4 bg-gray-800 rounded">
+    <h3 class="font-semibold mb-2">Company Details</h3>
+    <pre class="whitespace-pre-wrap">{{ data.company }}</pre>
+  </div>
+  <div class="p-4 bg-gray-800 rounded">
+    <h3 class="font-semibold mb-2">Deal Context</h3>
+    <pre class="whitespace-pre-wrap">{{ data.context }}</pre>
+  </div>
+  <div class="p-4 bg-gray-800 rounded">
+    <h3 class="font-semibold mb-2">Extracted Text</h3>
+    <pre class="whitespace-pre-wrap">{{ extracted }}</pre>
+  </div>
+</div>
+<form method="post" class="mt-4">
+  <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">Confirm</button>
+</form>
+{% endblock %}
