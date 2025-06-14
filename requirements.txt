@@ -17,3 +17,4 @@ Pillow
 # sqlite3 (built-in)
 markdown
 passlib[bcrypt]
+itsdangerous
