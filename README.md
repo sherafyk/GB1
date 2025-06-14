@@ -14,6 +14,8 @@ This project provides a FastAPI-based web application for AI-driven risk analysi
    ```
 4. Open `http://localhost:57802` in your browser to see the landing page.
    From there you can launch the multi-step data collection wizard.
+   After confirming your data, the app will call OpenAI to generate a markdown
+   risk report and email it to the configured address.
 
 ## Development
 Run the app directly with uvicorn:

@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Confirmation{% endblock %}
 {% block content %}
-<h2 class="text-lg mb-4">Submission Complete</h2>
-<p>Your data has been submitted for analysis.</p>
-<a href="/" class="text-blue-400 underline">Return Home</a>
+<h2 class="text-lg mb-4">Ready to run analysis?</h2>
+<p>Click below to generate the AI risk report.</p>
+<form method="post" class="mt-4">
+  <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">Run Analysis</button>
+</form>
 {% endblock %}
