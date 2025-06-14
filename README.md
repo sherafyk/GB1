@@ -15,6 +15,10 @@ docker-compose down
 docker-compose up -d --build
 ```
 
+```
+docker logs gb1-app-1 --tail=100
+```
+
 ## Quick Start
 1. Clone the repository.
 2. Copy `.env.sample` to `.env` and set your variables.
