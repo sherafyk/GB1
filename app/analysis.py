@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-import openai
+from openai import OpenAI
 
 from .db import log_submission
 from models import prompts
@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 
 # Configure the OpenAI library. If the API key is missing we log a warning so it
 # is obvious why AI features may not work.
-openai.api_key = os.getenv("OPENAI_API_KEY")
-if not openai.api_key:
+client = OpenAI()
+if not client.api_key:
     logger.warning("OPENAI_API_KEY is not set; AI analysis will be disabled")
 
 MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
@@ -40,7 +40,7 @@ MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 def _call_openai(prompt: str) -> str:
     """Helper that sends ``prompt`` to OpenAI and returns the raw text response."""
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
@@ -109,7 +109,7 @@ async def generate_questions(data: dict) -> list:
             except Exception as exc:
                 logger.error("Failed to read image %s: %s", path, exc)
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=MODEL, messages=[{"role": "user", "content": contents}], temperature=0.2
             )
             return response.choices[0].message.content.strip()
