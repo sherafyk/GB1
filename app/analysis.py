@@ -74,9 +74,35 @@ async def analyze_chunk(kind: str, content: str) -> dict:
     return await asyncio.to_thread(run)
 
 
+async def generate_context_questions(text: str) -> list:
+    """Generate five short context questions from ``text``."""
+
+    prompt = prompts.PROMPTS["context_q_gen"].format(data=text[:4000])
+
+    def run():
+        try:
+            return _call_openai(prompt)
+        except Exception as exc:
+            logger.error("Failed to generate context questions: %s", exc, exc_info=True)
+            raise RuntimeError(f"OpenAI API error: {exc}")
+
+    text = await asyncio.to_thread(run)
+    questions = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        line = line.lstrip("0123456789.- ")
+        questions.append(line)
+    if not questions:
+        raise RuntimeError("OpenAI did not return context questions")
+    return questions[:5]
+
+
 async def generate_questions(data: dict) -> list:
     """Generate the first round of 10 yes/no questions based on ``data``."""
     text = data.get("extracted_text", "")
+    context_answers = data.get("context_answers")
     image_paths = [
         p
         for p in data.get("files", [])
@@ -117,11 +143,14 @@ async def generate_questions(data: dict) -> list:
             logger.error("Failed to generate questions: %s", exc, exc_info=True)
             raise RuntimeError(f"OpenAI API error: {exc}")
 
-    # Prefer sending images directly if available
-    if image_paths:
+    # Prefer sending images directly if available and no context answers
+    if image_paths and not context_answers:
         text = await run_with_images(image_paths)
     else:
-        prompt = prompts.PROMPTS["question_gen"].format(data=text[:4000])
+        payload = {"text": text[:4000]}
+        if context_answers:
+            payload["context_answers"] = context_answers
+        prompt = prompts.PROMPTS["question_gen"].format(data=json.dumps(payload))
         text = await asyncio.to_thread(run_with_text, prompt)
 
     # The response is expected to be a numbered list. We clean each line and
@@ -146,7 +175,13 @@ async def generate_questions(data: dict) -> list:
 async def generate_followups(data: dict, answers: list) -> list:
     """Generate the second round of adaptive questions based on user answers."""
 
-    payload = json.dumps({"text": data.get("extracted_text", ""), "answers": answers})
+    payload = json.dumps(
+        {
+            "text": data.get("extracted_text", ""),
+            "context_answers": data.get("context_answers", []),
+            "answers": answers,
+        }
+    )
     prompt = prompts.PROMPTS["followup_gen"].format(data=payload)
 
     def run():

@@ -18,7 +18,7 @@ PROMPTS = {
         "Return JSON with keys score (0-100), rationale, and next_steps.\n\n{data}"
     ),
     "question_gen": (
-        "Read the following document text and generate a numbered list of 10 important yes/no questions that would help determine the riskiness of the deal and the likelihood of fraud.\n\n{data}"
+        "Based on the following information, generate a numbered list of 10 important yes/no questions that would help determine the riskiness of the deal and the likelihood of fraud.\n\n{data}"
     ),
     "question_gen_image": (
         "Read the following document image and generate a numbered list of 10 important yes/no questions that would help determine the riskiness of the deal and the likelihood of fraud."
@@ -34,5 +34,10 @@ PROMPTS = {
     ),
     "qa": (
         "Analyze the following Q&A responses for additional risk factors. Return JSON with keys score (0-100), rationale, and next_steps.\n\n{data}"
+    ),
+    "context_q_gen": (
+        "After reading the document text below, ask five short questions to better understand the context."
+        " Each question should be answerable in no more than five words."
+        " Provide the questions as a numbered list.\n\n{data}"
     ),
 }
