@@ -219,6 +219,7 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     form = request.session.setdefault("form", {})
     form["files"] = paths
     request.session["extracted_text"] = combined
+    form["extracted_text"] = combined
     structured = await extract_structured_data(combined)
     form["company"] = structured.get("company", {})
     form["context"] = structured.get("context", {})
@@ -277,6 +278,8 @@ async def wizard_review_post(
         "description": description,
         "notes": notes,
     }
+    if "extracted_text" in request.session:
+        form["extracted_text"] = request.session["extracted_text"]
     questions = await generate_questions(form)
     request.session["questions_round1"] = questions
     return RedirectResponse(url="/wizard/questions1", status_code=303)
