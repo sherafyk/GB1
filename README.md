@@ -4,8 +4,8 @@ This project was created for the enterprise client **Gene**. Gene is a self‑ho
 
 ## Features
 
- - Wizard to upload documents and answer two rounds of AI-generated yes/no questions
-- Automatic text extraction from PDF and image uploads
+- Wizard to upload documents and answer two rounds of AI-generated yes/no questions
+- Automatic text extraction from PDFs and images, with images optionally sent directly to OpenAI for vision-based question generation
 - AI generated yes/no questions to clarify risk factors (two rounds of ten questions)
 - Markdown risk report with overall score, rationale and next steps
 - Email delivery of the report (optional SMTP configuration)
