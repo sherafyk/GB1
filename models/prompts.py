@@ -18,10 +18,10 @@ PROMPTS = {
         "Return JSON with keys score (0-100), rationale, and next_steps.\n\n{data}"
     ),
     "question_gen": (
-        "Based on your analysis of the following company data and context, generate a numbered list of 10 important yes/no questions for the user.\n\n{data}"
+        "Read the following document text and generate a numbered list of 10 important yes/no questions that would help determine the riskiness of the deal and the likelihood of fraud.\n\n{data}"
     ),
     "followup_gen": (
-        "Given the company information and the user's previous answers, generate a numbered list of 10 additional yes/no questions to clarify remaining risk.\n\n{data}"
+        "Given the document text and the user's previous answers, generate a numbered list of 10 additional yes/no questions that further clarify risk or uncertainties.\n\n{data}"
     ),
     "extract": (
         "From the following document text, extract any company details and deal context mentioned."

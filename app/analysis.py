@@ -90,8 +90,8 @@ async def analyze_chunk(kind: str, content: str) -> dict:
 async def generate_questions(data: dict) -> list:
     """Generate the first round of 10 yes/no questions based on ``data``."""
 
-    # Serialize the collected form data and insert it into the prompt template.
-    prompt = prompts.PROMPTS["question_gen"].format(data=json.dumps(data))
+    text = data.get("extracted_text", "")
+    prompt = prompts.PROMPTS["question_gen"].format(data=text[:4000])
 
     def run():
         try:
@@ -125,7 +125,7 @@ async def generate_questions(data: dict) -> list:
 async def generate_followups(data: dict, answers: list) -> list:
     """Generate the second round of adaptive questions based on user answers."""
 
-    payload = json.dumps({"data": data, "answers": answers})
+    payload = json.dumps({"text": data.get("extracted_text", ""), "answers": answers})
     prompt = prompts.PROMPTS["followup_gen"].format(data=payload)
 
     def run():

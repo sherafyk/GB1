@@ -4,7 +4,7 @@ This project was created for the enterprise client **Gene**. Gene is a self‑ho
 
 ## Features
 
-- Multi‑step wizard to collect company details, deal context and documents
+ - Wizard to upload documents and answer two rounds of AI-generated yes/no questions
 - Automatic text extraction from PDF and image uploads
 - AI generated yes/no questions to clarify risk factors (two rounds of ten questions)
 - Markdown risk report with overall score, rationale and next steps
