@@ -12,6 +12,7 @@ import json
 import asyncio
 import smtplib
 import logging
+import base64
 from email.message import EmailMessage
 
 from dotenv import load_dotenv
@@ -75,19 +76,53 @@ async def analyze_chunk(kind: str, content: str) -> dict:
 
 async def generate_questions(data: dict) -> list:
     """Generate the first round of 10 yes/no questions based on ``data``."""
-
     text = data.get("extracted_text", "")
-    prompt = prompts.PROMPTS["question_gen"].format(data=text[:4000])
+    image_paths = [
+        p
+        for p in data.get("files", [])
+        if p.lower().endswith((".png", ".jpg", ".jpeg"))
+    ]
 
-    def run():
+    def run_with_text(prompt: str) -> str:
         try:
             return _call_openai(prompt)
         except Exception as exc:
             logger.error("Failed to generate questions: %s", exc, exc_info=True)
             return ""
 
-    # ``openai`` call is executed in a worker thread so the API remains async.
-    text = await asyncio.to_thread(run)
+    async def run_with_images(paths: list[str]) -> str:
+        contents = [
+            {"type": "text", "text": prompts.PROMPTS["question_gen_image"]}
+        ]
+        for path in paths[:3]:
+            try:
+                with open(path, "rb") as img:
+                    b64 = base64.b64encode(img.read()).decode()
+                ext = os.path.splitext(path)[1].lower()
+                mime = "image/png" if ext == ".png" else "image/jpeg"
+                contents.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{b64}"},
+                    }
+                )
+            except Exception as exc:
+                logger.error("Failed to read image %s: %s", path, exc)
+        try:
+            response = openai.ChatCompletion.create(
+                model=MODEL, messages=[{"role": "user", "content": contents}], temperature=0.2
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as exc:
+            logger.error("Failed to generate questions: %s", exc, exc_info=True)
+            return ""
+
+    # Prefer sending images directly if available
+    if image_paths:
+        text = await run_with_images(image_paths)
+    else:
+        prompt = prompts.PROMPTS["question_gen"].format(data=text[:4000])
+        text = await asyncio.to_thread(run_with_text, prompt)
 
     # The response is expected to be a numbered list. We clean each line and
     # strip any leading digits or punctuation to get just the question text.

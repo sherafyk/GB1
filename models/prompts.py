@@ -20,6 +20,9 @@ PROMPTS = {
     "question_gen": (
         "Read the following document text and generate a numbered list of 10 important yes/no questions that would help determine the riskiness of the deal and the likelihood of fraud.\n\n{data}"
     ),
+    "question_gen_image": (
+        "Read the following document image and generate a numbered list of 10 important yes/no questions that would help determine the riskiness of the deal and the likelihood of fraud."
+    ),
     "followup_gen": (
         "Given the document text and the user's previous answers, generate a numbered list of 10 additional yes/no questions that further clarify risk or uncertainties.\n\n{data}"
     ),
