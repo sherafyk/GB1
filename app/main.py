@@ -161,8 +161,12 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     combined = "\n".join(texts)
     form = request.session.setdefault("form", {})
     form["files"] = paths
-    request.session["extracted_text"] = combined
-    form["extracted_text"] = combined
+    # Persist extracted text to avoid storing large strings in the session
+    text_path = os.path.join(folder, "extracted.txt")
+    with open(text_path, "w", encoding="utf-8") as f:
+        f.write(combined)
+    request.session["text_path"] = text_path
+    form["text_path"] = text_path
     structured = await extract_structured_data(combined)
     form["company"] = structured.get("company", {})
     form["context"] = structured.get("context", {})
@@ -223,6 +227,10 @@ async def wizard_context_post(request: Request):
     request.session["context_answers"] = answers
     data = request.session.get("form", {})
     data["context_answers"] = answers
+    text_path = request.session.get("text_path")
+    if text_path and os.path.exists(text_path):
+        with open(text_path, "r", encoding="utf-8") as f:
+            data["extracted_text"] = f.read()
     try:
         questions = await generate_questions(data)
     except Exception as exc:
@@ -372,7 +380,12 @@ async def wizard_confirm_post(request: Request):
     if resp:
         return resp
     data = request.session.get("form", {})
-    data["extracted_text"] = request.session.get("extracted_text", "")
+    text_path = request.session.get("text_path")
+    if text_path and os.path.exists(text_path):
+        with open(text_path, "r", encoding="utf-8") as f:
+            data["extracted_text"] = f.read()
+    else:
+        data["extracted_text"] = ""
     data["context_answers"] = request.session.get("context_answers", [])
     qa = (
         request.session.get("context_answers", [])
