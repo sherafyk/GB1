@@ -88,7 +88,7 @@ async def generate_questions(data: dict) -> list:
             return _call_openai(prompt)
         except Exception as exc:
             logger.error("Failed to generate questions: %s", exc, exc_info=True)
-            return ""
+            raise RuntimeError(f"OpenAI API error: {exc}")
 
     async def run_with_images(paths: list[str]) -> str:
         contents = [
@@ -115,7 +115,7 @@ async def generate_questions(data: dict) -> list:
             return response.choices[0].message.content.strip()
         except Exception as exc:
             logger.error("Failed to generate questions: %s", exc, exc_info=True)
-            return ""
+            raise RuntimeError(f"OpenAI API error: {exc}")
 
     # Prefer sending images directly if available
     if image_paths:
@@ -156,7 +156,7 @@ async def generate_followups(data: dict, answers: list) -> list:
             logger.error(
                 "Failed to generate follow-up questions: %s", exc, exc_info=True
             )
-            return ""
+            raise RuntimeError(f"OpenAI API error: {exc}")
 
     text = await asyncio.to_thread(run)
     questions = []
