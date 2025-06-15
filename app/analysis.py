@@ -3,8 +3,8 @@
 The functions in this module wrap calls to the OpenAI API to perform risk
 scoring, question generation and document parsing. All OpenAI interactions are
 executed in worker threads so that the FastAPI event loop remains responsive.
-If the ``OPENAI_API_KEY`` environment variable is not set the functions will
-log a warning and return fallback values.
+If the ``OPENAI_API_KEY`` environment variable is not set the functions log a
+warning and raise a :class:`RuntimeError` when invoked.
 """
 
 import os
@@ -29,16 +29,22 @@ from models import prompts
 logger = logging.getLogger(__name__)
 
 # Configure the OpenAI library. If the API key is missing we log a warning so it
-# is obvious why AI features may not work.
-client = OpenAI()
-if not client.api_key:
+# is obvious why AI features may not work. ``client`` is ``None`` when no key is
+# configured and calls to the helpers will raise ``RuntimeError``.
+api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key) if api_key else None
+if not api_key:
     logger.warning("OPENAI_API_KEY is not set; AI analysis will be disabled")
 
 MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
 
 def _call_openai(prompt: str) -> str:
-    """Helper that sends ``prompt`` to OpenAI and returns the raw text response."""
+    """Send ``prompt`` to OpenAI and return the raw text response."""
+
+    if client is None:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
     try:
         response = client.chat.completions.create(
             model=MODEL,
@@ -77,6 +83,7 @@ async def analyze_chunk(kind: str, content: str) -> dict:
 async def generate_context_questions(text: str) -> list:
     """Generate five short context questions from ``text``."""
 
+
     prompt = prompts.PROMPTS["context_q_gen"].format(data=text[:4000])
 
     def run():
@@ -108,6 +115,7 @@ async def generate_questions(data: dict) -> list:
         for p in data.get("files", [])
         if p.lower().endswith((".png", ".jpg", ".jpeg"))
     ]
+
 
     def run_with_text(prompt: str) -> str:
         try:
@@ -174,6 +182,7 @@ async def generate_questions(data: dict) -> list:
 
 async def generate_followups(data: dict, answers: list) -> list:
     """Generate the second round of adaptive questions based on user answers."""
+
 
     payload = json.dumps(
         {
