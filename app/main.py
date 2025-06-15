@@ -4,6 +4,10 @@ import os
 import uuid
 from typing import List
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import pdfplumber
 from PIL import Image
 import pytesseract
@@ -26,9 +30,7 @@ from .analysis import (
 UPLOAD_DIR = "uploads"
 
 app = FastAPI()
-app.add_middleware(
-    SessionMiddleware, secret_key=os.getenv("APP_SECRET_KEY", "secret")
-)
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("APP_SECRET_KEY", "secret"))
 
 templates = Jinja2Templates(directory="templates")
 
@@ -50,6 +52,7 @@ def require_admin(request: Request):
     if not user or user.get("role") != "admin":
         return RedirectResponse(url="/", status_code=303)
 
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Render the landing page."""
@@ -63,7 +66,9 @@ async def login_get(request: Request):
 
 
 @app.post("/login")
-async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+async def login_post(
+    request: Request, username: str = Form(...), password: str = Form(...)
+):
     """Handle login form submission."""
     user = db.verify_user(username, password)
     if user:
@@ -128,16 +133,20 @@ async def wizard_company(request: Request):
     if resp:
         return resp
     data = request.session.get("form", {}).get("company", {})
-    return templates.TemplateResponse("company.html", {"request": request, "data": data})
+    return templates.TemplateResponse(
+        "company.html", {"request": request, "data": data}
+    )
 
 
 @app.post("/wizard/company")
-async def wizard_company_post(request: Request,
-                              name: str = Form(...),
-                              registration: str = Form(...),
-                              address: str = Form(...),
-                              country: str = Form(...),
-                              directors: str = Form(...)):
+async def wizard_company_post(
+    request: Request,
+    name: str = Form(...),
+    registration: str = Form(...),
+    address: str = Form(...),
+    country: str = Form(...),
+    directors: str = Form(...),
+):
     """Store company information submitted from the form."""
     resp = require_user(request)
     if resp:
@@ -161,14 +170,18 @@ async def wizard_context(request: Request):
     if resp:
         return resp
     data = request.session.get("form", {}).get("context", {})
-    return templates.TemplateResponse("context.html", {"request": request, "data": data})
+    return templates.TemplateResponse(
+        "context.html", {"request": request, "data": data}
+    )
 
 
 @app.post("/wizard/context")
-async def wizard_context_post(request: Request,
-                              transaction_type: str = Form(...),
-                              description: str = Form(...),
-                              notes: str = Form("")):
+async def wizard_context_post(
+    request: Request,
+    transaction_type: str = Form(...),
+    description: str = Form(...),
+    notes: str = Form(""),
+):
     """Save deal context details and continue to file upload."""
     resp = require_user(request)
     if resp:
@@ -226,7 +239,12 @@ async def wizard_review(request: Request):
     extracted = request.session.get("extracted_text", "")
     return templates.TemplateResponse(
         "review.html",
-        {"request": request, "company": company, "context": context, "extracted": extracted},
+        {
+            "request": request,
+            "company": company,
+            "context": context,
+            "extracted": extracted,
+        },
     )
 
 
@@ -240,7 +258,7 @@ async def wizard_review_post(
     directors: str = Form(...),
     transaction_type: str = Form(...),
     description: str = Form(...),
-    notes: str = Form("")
+    notes: str = Form(""),
 ):
     """Store edits and generate the first round of questions."""
     resp = require_user(request)
@@ -368,7 +386,9 @@ async def wizard_confirm(request: Request):
     if resp:
         return resp
     data = request.session.get("form", {})
-    return templates.TemplateResponse("confirm.html", {"request": request, "data": data})
+    return templates.TemplateResponse(
+        "confirm.html", {"request": request, "data": data}
+    )
 
 
 @app.post("/wizard/confirm")
@@ -379,7 +399,9 @@ async def wizard_confirm_post(request: Request):
         return resp
     data = request.session.get("form", {})
     data["extracted_text"] = request.session.get("extracted_text", "")
-    qa = request.session.get("answers_round1", []) + request.session.get("answers_round2", [])
+    qa = request.session.get("answers_round1", []) + request.session.get(
+        "answers_round2", []
+    )
     report_md = await analyze(data, qa)
     html_report = markdown.markdown(report_md)
     request.session.clear()
@@ -404,11 +426,18 @@ async def admin_users(request: Request):
     if resp:
         return resp
     users = db.list_users()
-    return templates.TemplateResponse("admin_users.html", {"request": request, "users": users})
+    return templates.TemplateResponse(
+        "admin_users.html", {"request": request, "users": users}
+    )
 
 
 @app.post("/admin/users/add")
-async def admin_users_add(request: Request, username: str = Form(...), password: str = Form(...), role: str = Form("user")):
+async def admin_users_add(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    role: str = Form("user"),
+):
     """Create a new user account."""
     resp = require_admin(request)
     if resp:
@@ -434,4 +463,6 @@ async def admin_logs(request: Request):
     if resp:
         return resp
     logs = db.get_logs()
-    return templates.TemplateResponse("admin_logs.html", {"request": request, "logs": logs})
+    return templates.TemplateResponse(
+        "admin_logs.html", {"request": request, "logs": logs}
+    )
