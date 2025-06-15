@@ -14,6 +14,10 @@ import smtplib
 import logging
 from email.message import EmailMessage
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Fallback questions are used if the OpenAI API call fails so the UI still
 # displays something useful. These cover common due diligence topics.
 FALLBACK_QUESTIONS = [
@@ -128,7 +132,9 @@ async def generate_followups(data: dict, answers: list) -> list:
         try:
             return _call_openai(prompt)
         except Exception as exc:
-            logger.error("Failed to generate follow-up questions: %s", exc, exc_info=True)
+            logger.error(
+                "Failed to generate follow-up questions: %s", exc, exc_info=True
+            )
             return ""
 
     text = await asyncio.to_thread(run)
@@ -182,7 +188,12 @@ async def analyze(data: dict, qa: list | None = None) -> str:
     overall = sum(r["score"] for r in results.values()) / len(results)
 
     md_lines = ["# Risk Analysis Report", f"**Overall Risk Score:** {overall:.1f}", ""]
-    name_map = {"company": "Company Info", "context": "Deal Context", "documents": "Documents", "qa": "Q&A"}
+    name_map = {
+        "company": "Company Info",
+        "context": "Deal Context",
+        "documents": "Documents",
+        "qa": "Q&A",
+    }
     for kind, res in results.items():
         md_lines.append(f"## {name_map.get(kind, kind.title())}")
         md_lines.append(f"- **Score:** {res['score']}")
@@ -195,7 +206,9 @@ async def analyze(data: dict, qa: list | None = None) -> str:
         md_lines.append("| # | Question | Answer | Context |")
         md_lines.append("|---|----------|-------|---------|")
         for i, item in enumerate(qa, 1):
-            md_lines.append(f"| {i} | {item['question']} | {item['answer']} | {item.get('context','')} |")
+            md_lines.append(
+                f"| {i} | {item['question']} | {item['answer']} | {item.get('context','')} |"
+            )
         md_lines.append("")
 
     md_lines.append(
