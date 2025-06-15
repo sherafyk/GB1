@@ -112,6 +112,7 @@ docker logs gb1-app-1 --tail=100
 - **No AI output** &ndash; the application logs a warning if `OPENAI_API_KEY` is missing. Ensure it is set and check logs for API errors.
 - **File extraction issues** &ndash; PDF and image extraction rely on `pdfplumber` and `pytesseract`. The Docker image installs the `tesseract-ocr` package so OCR works out of the box. If running locally, ensure Tesseract is installed on your system.
 - **Changing the port** &ndash; edit `docker-compose.yml` and the `CMD` in `Dockerfile` if you need a different port.
+- **Network restrictions** – Some external websites may be blocked. If downloads or package installs fail, check whether the domain is reachable or use an alternative mirror.
 
 ## Contributing
 
