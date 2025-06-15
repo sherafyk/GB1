@@ -214,23 +214,50 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
 
 @app.get("/wizard/review", response_class=HTMLResponse)
 async def wizard_review(request: Request):
-    """Allow the user to review extracted information before analysis."""
+    """Allow the user to review and edit extracted information."""
     resp = require_user(request)
     if resp:
         return resp
     data = request.session.get("form", {})
+    company = data.get("company", {})
+    context = data.get("context", {})
     extracted = request.session.get("extracted_text", "")
-    return templates.TemplateResponse("review.html", {"request": request, "data": data, "extracted": extracted})
+    return templates.TemplateResponse(
+        "review.html",
+        {"request": request, "company": company, "context": context, "extracted": extracted},
+    )
 
 
 @app.post("/wizard/review")
-async def wizard_review_post(request: Request):
-    """Generate the first round of questions from the collected data."""
+async def wizard_review_post(
+    request: Request,
+    name: str = Form(...),
+    registration: str = Form(...),
+    address: str = Form(...),
+    country: str = Form(...),
+    directors: str = Form(...),
+    transaction_type: str = Form(...),
+    description: str = Form(...),
+    notes: str = Form("")
+):
+    """Store edits and generate the first round of questions."""
     resp = require_user(request)
     if resp:
         return resp
-    data = request.session.get("form", {})
-    questions = await generate_questions(data)
+    form = request.session.setdefault("form", {})
+    form["company"] = {
+        "name": name,
+        "registration": registration,
+        "address": address,
+        "country": country,
+        "directors": directors,
+    }
+    form["context"] = {
+        "transaction_type": transaction_type,
+        "description": description,
+        "notes": notes,
+    }
+    questions = await generate_questions(form)
     request.session["questions_round1"] = questions
     return RedirectResponse(url="/wizard/questions1", status_code=303)
 
