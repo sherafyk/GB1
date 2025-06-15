@@ -209,7 +209,9 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     structured = await extract_structured_data(combined)
     form["company"] = structured.get("company", {})
     form["context"] = structured.get("context", {})
-    return RedirectResponse(url="/wizard/review", status_code=303)
+    questions = await generate_questions(form)
+    request.session["questions_round1"] = questions
+    return RedirectResponse(url="/wizard/questions1", status_code=303)
 
 
 @app.get("/wizard/review", response_class=HTMLResponse)
@@ -274,7 +276,7 @@ async def wizard_questions1(request: Request):
         {
             "request": request,
             "questions": questions,
-            "step": "Step 3 of 5: Answer 10 Key Questions",
+            "step": "Step 2 of 4: Answer 10 Key Questions",
             "post_url": "/wizard/questions1",
         },
     )
@@ -297,7 +299,7 @@ async def wizard_questions1_post(request: Request):
                 {
                     "request": request,
                     "questions": questions,
-                    "step": "Step 3 of 5: Answer 10 Key Questions",
+                    "step": "Step 2 of 4: Answer 10 Key Questions",
                     "post_url": "/wizard/questions1",
                     "error": "Please answer all questions",
                 },
@@ -324,7 +326,7 @@ async def wizard_questions2(request: Request):
         {
             "request": request,
             "questions": questions,
-            "step": "Step 4 of 5: Answer Follow-Up Questions",
+            "step": "Step 3 of 4: Answer Follow-Up Questions",
             "post_url": "/wizard/questions2",
         },
     )
@@ -347,7 +349,7 @@ async def wizard_questions2_post(request: Request):
                 {
                     "request": request,
                     "questions": questions,
-                    "step": "Step 4 of 5: Answer Follow-Up Questions",
+                    "step": "Step 3 of 4: Answer Follow-Up Questions",
                     "post_url": "/wizard/questions2",
                     "error": "Please answer all questions",
                 },
