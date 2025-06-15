@@ -223,9 +223,7 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     structured = await extract_structured_data(combined)
     form["company"] = structured.get("company", {})
     form["context"] = structured.get("context", {})
-    questions = await generate_questions(form)
-    request.session["questions_round1"] = questions
-    return RedirectResponse(url="/wizard/questions1", status_code=303)
+    return RedirectResponse(url="/wizard/review", status_code=303)
 
 
 @app.get("/wizard/review", response_class=HTMLResponse)

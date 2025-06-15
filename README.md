@@ -68,8 +68,8 @@ apache.conf.sample  Example Apache reverse proxy config
 
 1. Log in with your credentials.
 2. Click **Start New Assessment** on the landing page to upload your documents.
-3. After upload the AI extracts the text and immediately presents ten yes/no questions.
-4. Answer the questions (and a second adaptive round) then confirm to run the analysis.
+3. After upload the extracted text is shown for review so you can make any corrections.
+4. Continue to answer the first ten AI‑generated yes/no questions (and a second adaptive round) then confirm to run the analysis.
 5. When analysis completes you will see the markdown report in the browser. If SMTP is configured it is also emailed to the address specified in `.env`.
 6. Admin users can manage accounts and view submission logs under `/admin`.
 
