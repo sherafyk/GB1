@@ -21,6 +21,7 @@ from . import db
 
 from .analysis import (
     analyze,
+    generate_context_questions,
     generate_questions,
     generate_followups,
     extract_structured_data,
@@ -166,11 +167,74 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     form["company"] = structured.get("company", {})
     form["context"] = structured.get("context", {})
     try:
-        questions = await generate_questions(form)
+        context_q = await generate_context_questions(combined)
     except Exception as exc:
         return templates.TemplateResponse(
             "upload.html",
-            {"request": request, "error": f"Failed to generate questions: {exc}"},
+            {"request": request, "error": f"Failed to generate context questions: {exc}"},
+            status_code=500,
+        )
+    request.session["context_questions"] = context_q
+    return RedirectResponse(url="/wizard/context", status_code=303)
+
+
+@app.get("/wizard/context", response_class=HTMLResponse)
+async def wizard_context(request: Request):
+    """Display short context questions for the user."""
+    resp = require_user(request)
+    if resp:
+        return resp
+    questions = request.session.get("context_questions", [])
+    return templates.TemplateResponse(
+        "short_questions.html",
+        {
+            "request": request,
+            "questions": questions,
+            "step": "Step 2 of 5: Provide Context",
+            "post_url": "/wizard/context",
+        },
+    )
+
+
+@app.post("/wizard/context")
+async def wizard_context_post(request: Request):
+    """Handle answers to the context questions and fetch yes/no questions."""
+    resp = require_user(request)
+    if resp:
+        return resp
+    form = await request.form()
+    questions = request.session.get("context_questions", [])
+    answers = []
+    for i, q in enumerate(questions, 1):
+        ans = form.get(f"q{i}")
+        if not ans:
+            return templates.TemplateResponse(
+                "short_questions.html",
+                {
+                    "request": request,
+                    "questions": questions,
+                    "step": "Step 2 of 5: Provide Context",
+                    "post_url": "/wizard/context",
+                    "error": "Please answer all questions",
+                },
+                status_code=400,
+            )
+        answers.append({"question": q, "answer": ans})
+    request.session["context_answers"] = answers
+    data = request.session.get("form", {})
+    data["context_answers"] = answers
+    try:
+        questions = await generate_questions(data)
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "short_questions.html",
+            {
+                "request": request,
+                "questions": questions,
+                "step": "Step 2 of 5: Provide Context",
+                "post_url": "/wizard/context",
+                "error": f"Failed to generate questions: {exc}",
+            },
             status_code=500,
         )
     request.session["questions_round1"] = questions
@@ -191,7 +255,7 @@ async def wizard_questions1(request: Request):
         {
             "request": request,
             "questions": questions,
-            "step": "Step 2 of 4: Answer 10 Key Questions",
+            "step": "Step 3 of 5: Answer 10 Key Questions",
             "post_url": "/wizard/questions1",
         },
     )
@@ -214,7 +278,7 @@ async def wizard_questions1_post(request: Request):
                 {
                     "request": request,
                     "questions": questions,
-                    "step": "Step 2 of 4: Answer 10 Key Questions",
+                    "step": "Step 3 of 5: Answer 10 Key Questions",
                     "post_url": "/wizard/questions1",
                     "error": "Please answer all questions",
                 },
@@ -232,7 +296,7 @@ async def wizard_questions1_post(request: Request):
             {
                 "request": request,
                 "questions": questions,
-                "step": "Step 2 of 4: Answer 10 Key Questions",
+                "step": "Step 3 of 5: Answer 10 Key Questions",
                 "post_url": "/wizard/questions1",
                 "error": f"Failed to generate follow-up questions: {exc}",
             },
@@ -254,7 +318,7 @@ async def wizard_questions2(request: Request):
         {
             "request": request,
             "questions": questions,
-            "step": "Step 3 of 4: Answer Follow-Up Questions",
+            "step": "Step 4 of 5: Answer Follow-Up Questions",
             "post_url": "/wizard/questions2",
         },
     )
@@ -277,7 +341,7 @@ async def wizard_questions2_post(request: Request):
                 {
                     "request": request,
                     "questions": questions,
-                    "step": "Step 3 of 4: Answer Follow-Up Questions",
+                    "step": "Step 4 of 5: Answer Follow-Up Questions",
                     "post_url": "/wizard/questions2",
                     "error": "Please answer all questions",
                 },
@@ -309,8 +373,11 @@ async def wizard_confirm_post(request: Request):
         return resp
     data = request.session.get("form", {})
     data["extracted_text"] = request.session.get("extracted_text", "")
-    qa = request.session.get("answers_round1", []) + request.session.get(
-        "answers_round2", []
+    data["context_answers"] = request.session.get("context_answers", [])
+    qa = (
+        request.session.get("context_answers", [])
+        + request.session.get("answers_round1", [])
+        + request.session.get("answers_round2", [])
     )
     report_md = await analyze(data, qa)
     html_report = markdown.markdown(report_md)
