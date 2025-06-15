@@ -5,7 +5,7 @@ aiofiles
 pydantic
 httpx
 jinja2
-openai
+openai>=1.0.0
 python-dotenv
 tqdm
 # pdfplumber
