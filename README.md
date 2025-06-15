@@ -113,7 +113,7 @@ docker logs gb1-app-1 --tail=100
 - **No email delivered** &ndash; verify SMTP settings in `.env` and check container logs for errors.
 - **OpenAI errors** &ndash; ensure `OPENAI_API_KEY` is valid and your account has access to the chosen model.
 - **No AI output** &ndash; the application logs a warning if `OPENAI_API_KEY` is missing. Ensure it is set and check logs for API errors.
-- **File extraction issues** &ndash; PDF and image extraction require `pdfplumber` and `pytesseract`. In the Docker image these libraries are installed but system dependencies may be required for advanced parsing.
+- **File extraction issues** &ndash; PDF and image extraction rely on `pdfplumber` and `pytesseract`. The Docker image installs the `tesseract-ocr` package so OCR works out of the box. If running locally, ensure Tesseract is installed on your system.
 - **Changing the port** &ndash; edit `docker-compose.yml` and the `CMD` in `Dockerfile` if you need a different port.
 
 ## Contributing
