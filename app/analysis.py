@@ -14,6 +14,21 @@ import smtplib
 import logging
 from email.message import EmailMessage
 
+# Fallback questions are used if the OpenAI API call fails so the UI still
+# displays something useful. These cover common due diligence topics.
+FALLBACK_QUESTIONS = [
+    "Is the company's registration current and valid?",
+    "Are any directors or owners politically exposed persons?",
+    "Is the company's address located in a high-risk jurisdiction?",
+    "Has the company or its owners been involved in litigation?",
+    "Has the company filed audited financial statements recently?",
+    "Are there any outstanding tax or regulatory issues?",
+    "Has negative media coverage been identified?",
+    "Is the beneficial ownership structure transparent?",
+    "Have any sanctions lists flagged the company or owners?",
+    "Are there undisclosed related-party transactions?",
+]
+
 import openai
 
 from .db import log_submission
@@ -93,6 +108,11 @@ async def generate_questions(data: dict) -> list:
             continue
         line = line.lstrip("0123456789.- ")
         questions.append(line)
+    # If the API call failed or returned nothing, fall back to generic questions
+    # so the workflow can continue.
+    if not questions:
+        questions = FALLBACK_QUESTIONS.copy()
+
     # Only return the first 10 items to guard against prompt injection or
     # unexpected long replies.
     return questions[:10]
@@ -119,6 +139,8 @@ async def generate_followups(data: dict, answers: list) -> list:
             continue
         line = line.lstrip("0123456789.- ")
         questions.append(line)
+    if not questions:
+        questions = FALLBACK_QUESTIONS.copy()
     return questions[:10]
 
 

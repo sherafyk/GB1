@@ -1,22 +1,53 @@
 {% extends "base.html" %}
 {% block title %}Review Data{% endblock %}
 {% block content %}
-<h2 class="text-lg mb-4">Review your information</h2>
-<div class="space-y-4">
-  <div class="p-4 bg-gray-800 rounded">
+<h2 class="text-lg mb-4">Review and edit your information</h2>
+<form method="post" class="space-y-6">
+  <div class="p-4 bg-gray-800 rounded space-y-4">
     <h3 class="font-semibold mb-2">Company Details</h3>
-    <pre class="whitespace-pre-wrap">{{ data.company }}</pre>
+    <div>
+      <label class="block mb-1">Company Name</label>
+      <input type="text" name="name" value="{{ company.name or '' }}" required class="w-full p-2 rounded bg-gray-900">
+    </div>
+    <div>
+      <label class="block mb-1">Registration Number</label>
+      <input type="text" name="registration" value="{{ company.registration or '' }}" required class="w-full p-2 rounded bg-gray-900">
+    </div>
+    <div>
+      <label class="block mb-1">Address</label>
+      <input type="text" name="address" value="{{ company.address or '' }}" required class="w-full p-2 rounded bg-gray-900">
+    </div>
+    <div>
+      <label class="block mb-1">Country</label>
+      <input type="text" name="country" value="{{ company.country or '' }}" required class="w-full p-2 rounded bg-gray-900">
+    </div>
+    <div>
+      <label class="block mb-1">Directors / Owners</label>
+      <textarea name="directors" rows="3" class="w-full p-2 rounded bg-gray-900" required>{{ company.directors or '' }}</textarea>
+    </div>
   </div>
-  <div class="p-4 bg-gray-800 rounded">
+
+  <div class="p-4 bg-gray-800 rounded space-y-4">
     <h3 class="font-semibold mb-2">Deal Context</h3>
-    <pre class="whitespace-pre-wrap">{{ data.context }}</pre>
+    <div>
+      <label class="block mb-1">Transaction Type</label>
+      <input type="text" name="transaction_type" value="{{ context.transaction_type or '' }}" required class="w-full p-2 rounded bg-gray-900">
+    </div>
+    <div>
+      <label class="block mb-1">Description</label>
+      <textarea name="description" rows="3" class="w-full p-2 rounded bg-gray-900" required>{{ context.description or '' }}</textarea>
+    </div>
+    <div>
+      <label class="block mb-1">Notes</label>
+      <textarea name="notes" rows="3" class="w-full p-2 rounded bg-gray-900">{{ context.notes or '' }}</textarea>
+    </div>
   </div>
+
   <div class="p-4 bg-gray-800 rounded">
     <h3 class="font-semibold mb-2">Extracted Text</h3>
-    <pre class="whitespace-pre-wrap">{{ extracted }}</pre>
+    <pre class="whitespace-pre-wrap h-48 overflow-y-auto bg-gray-900 p-2">{{ extracted }}</pre>
   </div>
-</div>
-<form method="post" class="mt-4">
-  <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">Confirm</button>
+
+  <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">Continue</button>
 </form>
 {% endblock %}
