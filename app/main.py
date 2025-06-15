@@ -115,15 +115,16 @@ def extract_text(path: str) -> str:
                 # ``pdfplumber`` returns one object per page; we join them into
                 # a single string for analysis.
                 return "\n".join([page.extract_text() or "" for page in pdf.pages])
-        except Exception:
-            return ""
+        except Exception as exc:
+            raise RuntimeError(f"Failed to read PDF {path}: {exc}")
     elif path.lower().endswith((".png", ".jpg", ".jpeg")):
         try:
             # OCR the image using Tesseract.
             return pytesseract.image_to_string(Image.open(path))
-        except Exception:
-            return ""
-    return ""
+        except Exception as exc:
+            raise RuntimeError(f"Failed to OCR image {path}: {exc}")
+    else:
+        raise RuntimeError(f"Unsupported file type: {path}")
 
 
 
@@ -148,7 +149,14 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     uid = request.session.get("upload_id")
     folder = os.path.join(UPLOAD_DIR, uid)
     paths = save_uploads(files, folder)
-    texts = [extract_text(p) for p in paths]
+    try:
+        texts = [extract_text(p) for p in paths]
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "upload.html",
+            {"request": request, "error": str(exc)},
+            status_code=400,
+        )
     combined = "\n".join(texts)
     form = request.session.setdefault("form", {})
     form["files"] = paths
@@ -157,7 +165,14 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     structured = await extract_structured_data(combined)
     form["company"] = structured.get("company", {})
     form["context"] = structured.get("context", {})
-    questions = await generate_questions(form)
+    try:
+        questions = await generate_questions(form)
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "upload.html",
+            {"request": request, "error": f"Failed to generate questions: {exc}"},
+            status_code=500,
+        )
     request.session["questions_round1"] = questions
     return RedirectResponse(url="/wizard/questions1", status_code=303)
 
@@ -209,7 +224,20 @@ async def wizard_questions1_post(request: Request):
         answers.append({"question": q, "answer": ans, "context": ctx})
     request.session["answers_round1"] = answers
     data = request.session.get("form", {})
-    followups = await generate_followups(data, answers)
+    try:
+        followups = await generate_followups(data, answers)
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "questions.html",
+            {
+                "request": request,
+                "questions": questions,
+                "step": "Step 2 of 4: Answer 10 Key Questions",
+                "post_url": "/wizard/questions1",
+                "error": f"Failed to generate follow-up questions: {exc}",
+            },
+            status_code=500,
+        )
     request.session["questions_round2"] = followups
     return RedirectResponse(url="/wizard/questions2", status_code=303)
 
