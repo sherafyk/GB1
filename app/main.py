@@ -3,6 +3,7 @@
 import os
 import uuid
 from typing import List
+import subprocess
 
 from dotenv import load_dotenv
 
@@ -37,6 +38,25 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv("APP_SECRET_KEY", "se
 templates = Jinja2Templates(directory="templates")
 
 
+def get_last_updated() -> str:
+    """Return the timestamp of the last Git commit."""
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    try:
+        out = subprocess.check_output(
+            [
+                "git",
+                "log",
+                "-1",
+                "--format=%cd",
+                "--date=format:%Y-%m-%d-%H:%M",
+            ],
+            cwd=repo_root,
+        )
+        return out.decode().strip()
+    except Exception:
+        return ""
+
+
 def get_current_user(request: Request):
     """Return the currently logged in user from the session or ``None``."""
     return request.session.get("user")
@@ -58,7 +78,10 @@ def require_admin(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Render the landing page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    last_updated = get_last_updated()
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "last_updated": last_updated}
+    )
 
 
 @app.get("/login", response_class=HTMLResponse)
