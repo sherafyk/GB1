@@ -13,6 +13,7 @@ from PIL import Image
 import pytesseract
 from fastapi import FastAPI, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
+import bleach
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 import markdown
@@ -95,13 +96,17 @@ def save_uploads(files: List[UploadFile], folder: str) -> List[str]:
     os.makedirs(folder, exist_ok=True)
     paths = []
     for file in files:
-        ext = os.path.splitext(file.filename)[1].lower()
+        # ``UploadFile.filename`` may include directory components from the
+        # client's system. ``basename`` prevents directory traversal attacks.
+        name = os.path.basename(file.filename)
+        ext = os.path.splitext(name)[1].lower()
         if ext not in [".pdf", ".png", ".jpg", ".jpeg"]:
             continue
         content = file.file.read()
         if len(content) > 5 * 1024 * 1024:
             continue
-        file_path = os.path.join(folder, file.filename)
+        name = f"{uuid.uuid4().hex}_{name}"
+        file_path = os.path.join(folder, name)
         with open(file_path, "wb") as out_file:
             out_file.write(content)
         paths.append(file_path)
@@ -170,6 +175,10 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     structured = await extract_structured_data(combined)
     form["company"] = structured.get("company", {})
     form["context"] = structured.get("context", {})
+    # ``SessionMiddleware`` only marks the session as modified when keys are
+    # assigned on the top-level mapping. Reassign the form object so nested
+    # changes persist.
+    request.session["form"] = form
     try:
         context_q = await generate_context_questions(combined)
     except Exception as exc:
@@ -227,12 +236,13 @@ async def wizard_context_post(request: Request):
     request.session["context_answers"] = answers
     data = request.session.get("form", {})
     data["context_answers"] = answers
+    request.session["form"] = data
     text_path = request.session.get("text_path")
     if text_path and os.path.exists(text_path):
         with open(text_path, "r", encoding="utf-8") as f:
             data["extracted_text"] = f.read()
     try:
-        questions = await generate_questions(data)
+        new_questions = await generate_questions(data)
     except Exception as exc:
         return templates.TemplateResponse(
             "short_questions.html",
@@ -245,7 +255,7 @@ async def wizard_context_post(request: Request):
             },
             status_code=500,
         )
-    request.session["questions_round1"] = questions
+    request.session["questions_round1"] = new_questions
     return RedirectResponse(url="/wizard/questions1", status_code=303)
 
 
@@ -394,6 +404,11 @@ async def wizard_confirm_post(request: Request):
     )
     report_md = await analyze(data, qa)
     html_report = markdown.markdown(report_md)
+    html_report = bleach.clean(
+        html_report,
+        tags=bleach.sanitizer.ALLOWED_TAGS + ["p", "h1", "h2", "h3", "table", "tr", "th", "td"],
+        attributes={"a": ["href", "title"], "img": ["src", "alt"]},
+    )
     request.session.clear()
     return templates.TemplateResponse(
         "report.html", {"request": request, "report": html_report}
