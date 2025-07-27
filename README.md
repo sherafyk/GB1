@@ -4,14 +4,12 @@ This project was created for the enterprise client **Gene**. Gene is a self‑ho
 
 ## Features
 
-- Wizard to upload documents and answer an initial set of short context questions followed by two rounds of AI-generated yes/no questions
-- Automatic text extraction from PDFs and images, with images optionally sent directly to OpenAI for vision-based question generation
-- AI generated yes/no questions to clarify risk factors (two rounds of ten questions) after gathering brief context
+- Wizard to upload a document and receive an instant AI-generated risk report
+- Automatic text extraction from PDFs and images, with images optionally sent directly to OpenAI for vision-based analysis
 - Markdown risk report with overall score, rationale and next steps
 - Email delivery of the report (optional SMTP configuration)
 - User authentication with an admin panel to manage users and view submission logs
 - SQLite database for storing submissions and users
-
 ## Repository Layout
 
 ```
@@ -67,11 +65,10 @@ apache.conf.sample  Example Apache reverse proxy config
 ## Using the Application
 
 1. Log in with your credentials.
-2. Click **Start New Assessment** on the landing page to upload your documents.
-3. After upload the extracted text is shown for review so you can make any corrections.
-4. Answer five short context questions, then continue with the first ten AI‑generated yes/no questions and a second adaptive round before confirming the analysis.
-5. When analysis completes you will see the markdown report in the browser. If SMTP is configured it is also emailed to the address specified in `.env`.
-6. Admin users can manage accounts and view submission logs under `/admin`.
+2. Click **Start New Assessment** on the landing page.
+3. Upload your document and wait for the analysis to finish.
+4. When analysis completes you will see the markdown report in the browser. If SMTP is configured it is also emailed to the address specified in `.env`.
+5. Admin users can manage accounts and view submission logs under `/admin`.
 
 ## Development Workflow
 

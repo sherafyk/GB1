@@ -40,4 +40,18 @@ PROMPTS = {
         " Each question should be answerable in no more than five words."
         " Provide the questions as a numbered list.\n\n{data}"
     ),
+    "simple_document": (
+        "I am reviewing a business offer document and need a professional due diligence analysis. "
+        "Please assess the document using a business investment and fraud risk framework. Use the following structure:\n\n"
+        "1. Summary of document\n"
+        "2. Entity legitimacy\n"
+        "3. Deal terms\n"
+        "4. Compliance gaps\n"
+        "5. Reputation and documentation review\n"
+        "6. Fraud indicators table\n"
+        "7. Final assessment\n"
+        "8. Recommendations\n\n"
+        "Be professional, specific, and clear. Use structured headers. This document may involve commodities like gold, oil, property, or other assets.\n\n"
+        "Document text:\n{data}"
+    ),
 }
