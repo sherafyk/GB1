@@ -156,16 +156,16 @@ def extract_text(path: str) -> str:
         raise RuntimeError(f"Unsupported file type: {path}")
 
 
-
-
 @app.get("/wizard/upload", response_class=HTMLResponse)
 async def wizard_upload(request: Request):
     """Show the file upload page."""
     resp = require_user(request)
     if resp:
         return resp
-    if "upload_id" not in request.session:
-        request.session["upload_id"] = str(uuid.uuid4())
+    # Ensure an upload ID exists so the POST handler always has a valid path
+    # even if the user skips directly to the upload form. ``setdefault`` avoids
+    # overwriting an existing value.
+    request.session.setdefault("upload_id", str(uuid.uuid4()))
     return templates.TemplateResponse("upload.html", {"request": request})
 
 
@@ -175,7 +175,9 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     resp = require_user(request)
     if resp:
         return resp
-    uid = request.session.get("upload_id")
+    # ``upload_id`` may be missing if a user POSTs directly without first
+    # visiting the GET endpoint. Generate one on the fly to avoid server errors.
+    uid = request.session.setdefault("upload_id", str(uuid.uuid4()))
     folder = os.path.join(UPLOAD_DIR, uid)
     paths = save_uploads(files, folder)
     try:
@@ -207,7 +209,10 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
     except Exception as exc:
         return templates.TemplateResponse(
             "upload.html",
-            {"request": request, "error": f"Failed to generate context questions: {exc}"},
+            {
+                "request": request,
+                "error": f"Failed to generate context questions: {exc}",
+            },
             status_code=500,
         )
     request.session["context_questions"] = context_q
@@ -280,8 +285,6 @@ async def wizard_context_post(request: Request):
         )
     request.session["questions_round1"] = new_questions
     return RedirectResponse(url="/wizard/questions1", status_code=303)
-
-
 
 
 @app.get("/wizard/questions1", response_class=HTMLResponse)
@@ -429,7 +432,8 @@ async def wizard_confirm_post(request: Request):
     html_report = markdown.markdown(report_md)
     html_report = bleach.clean(
         html_report,
-        tags=bleach.sanitizer.ALLOWED_TAGS + ["p", "h1", "h2", "h3", "table", "tr", "th", "td"],
+        tags=bleach.sanitizer.ALLOWED_TAGS
+        + ["p", "h1", "h2", "h3", "table", "tr", "th", "td"],
         attributes={"a": ["href", "title"], "img": ["src", "alt"]},
     )
     request.session.clear()
