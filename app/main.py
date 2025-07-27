@@ -21,13 +21,7 @@ import markdown
 
 from . import db
 
-from .analysis import (
-    analyze,
-    generate_context_questions,
-    generate_questions,
-    generate_followups,
-    extract_structured_data,
-)
+from .analysis import analyze_document
 
 
 UPLOAD_DIR = "uploads"
@@ -171,13 +165,11 @@ async def wizard_upload(request: Request):
 
 @app.post("/wizard/upload")
 async def wizard_upload_post(request: Request, files: List[UploadFile] = File(...)):
-    """Handle document uploads and perform initial text extraction."""
+    """Handle document uploads and immediately run the analysis."""
     resp = require_user(request)
     if resp:
         return resp
-    # ``upload_id`` may be missing if a user POSTs directly without first
-    # visiting the GET endpoint. Generate one on the fly to avoid server errors.
-    uid = request.session.setdefault("upload_id", str(uuid.uuid4()))
+    uid = str(uuid.uuid4())
     folder = os.path.join(UPLOAD_DIR, uid)
     paths = save_uploads(files, folder)
     try:
@@ -189,257 +181,25 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
             status_code=400,
         )
     combined = "\n".join(texts)
-    form = request.session.setdefault("form", {})
-    form["files"] = paths
-    # Persist extracted text to avoid storing large strings in the session
-    text_path = os.path.join(folder, "extracted.txt")
-    with open(text_path, "w", encoding="utf-8") as f:
-        f.write(combined)
-    request.session["text_path"] = text_path
-    form["text_path"] = text_path
-    structured = await extract_structured_data(combined)
-    form["company"] = structured.get("company", {})
-    form["context"] = structured.get("context", {})
-    # ``SessionMiddleware`` only marks the session as modified when keys are
-    # assigned on the top-level mapping. Reassign the form object so nested
-    # changes persist.
-    request.session["form"] = form
     try:
-        context_q = await generate_context_questions(combined)
+        report_md = await analyze_document(combined)
     except Exception as exc:
         return templates.TemplateResponse(
             "upload.html",
-            {
-                "request": request,
-                "error": f"Failed to generate context questions: {exc}",
-            },
+            {"request": request, "error": str(exc)},
             status_code=500,
         )
-    request.session["context_questions"] = context_q
-    return RedirectResponse(url="/wizard/context", status_code=303)
-
-
-@app.get("/wizard/context", response_class=HTMLResponse)
-async def wizard_context(request: Request):
-    """Display short context questions for the user."""
-    resp = require_user(request)
-    if resp:
-        return resp
-    questions = request.session.get("context_questions", [])
-    return templates.TemplateResponse(
-        "short_questions.html",
-        {
-            "request": request,
-            "questions": questions,
-            "step": "Step 2 of 5: Provide Context",
-            "post_url": "/wizard/context",
-        },
-    )
-
-
-@app.post("/wizard/context")
-async def wizard_context_post(request: Request):
-    """Handle answers to the context questions and fetch yes/no questions."""
-    resp = require_user(request)
-    if resp:
-        return resp
-    form = await request.form()
-    questions = request.session.get("context_questions", [])
-    answers = []
-    for i, q in enumerate(questions, 1):
-        ans = form.get(f"q{i}")
-        if not ans:
-            return templates.TemplateResponse(
-                "short_questions.html",
-                {
-                    "request": request,
-                    "questions": questions,
-                    "step": "Step 2 of 5: Provide Context",
-                    "post_url": "/wizard/context",
-                    "error": "Please answer all questions",
-                },
-                status_code=400,
-            )
-        answers.append({"question": q, "answer": ans})
-    request.session["context_answers"] = answers
-    data = request.session.get("form", {})
-    data["context_answers"] = answers
-    request.session["form"] = data
-    text_path = request.session.get("text_path")
-    if text_path and os.path.exists(text_path):
-        with open(text_path, "r", encoding="utf-8") as f:
-            data["extracted_text"] = f.read()
-    try:
-        new_questions = await generate_questions(data)
-    except Exception as exc:
-        return templates.TemplateResponse(
-            "short_questions.html",
-            {
-                "request": request,
-                "questions": questions,
-                "step": "Step 2 of 5: Provide Context",
-                "post_url": "/wizard/context",
-                "error": f"Failed to generate questions: {exc}",
-            },
-            status_code=500,
-        )
-    request.session["questions_round1"] = new_questions
-    return RedirectResponse(url="/wizard/questions1", status_code=303)
-
-
-@app.get("/wizard/questions1", response_class=HTMLResponse)
-async def wizard_questions1(request: Request):
-    """Display the first set of AI-generated questions."""
-    resp = require_user(request)
-    if resp:
-        return resp
-    questions = request.session.get("questions_round1", [])
-    return templates.TemplateResponse(
-        "questions.html",
-        {
-            "request": request,
-            "questions": questions,
-            "step": "Step 3 of 5: Answer 10 Key Questions",
-            "post_url": "/wizard/questions1",
-        },
-    )
-
-
-@app.post("/wizard/questions1")
-async def wizard_questions1_post(request: Request):
-    """Process answers to the first question round and fetch follow-ups."""
-    resp = require_user(request)
-    if resp:
-        return resp
-    form = await request.form()
-    questions = request.session.get("questions_round1", [])
-    answers = []
-    for i, q in enumerate(questions, 1):
-        ans = form.get(f"q{i}")
-        if not ans:
-            return templates.TemplateResponse(
-                "questions.html",
-                {
-                    "request": request,
-                    "questions": questions,
-                    "step": "Step 3 of 5: Answer 10 Key Questions",
-                    "post_url": "/wizard/questions1",
-                    "error": "Please answer all questions",
-                },
-                status_code=400,
-            )
-        ctx = form.get(f"q{i}_context", "")
-        answers.append({"question": q, "answer": ans, "context": ctx})
-    request.session["answers_round1"] = answers
-    data = request.session.get("form", {})
-    try:
-        followups = await generate_followups(data, answers)
-    except Exception as exc:
-        return templates.TemplateResponse(
-            "questions.html",
-            {
-                "request": request,
-                "questions": questions,
-                "step": "Step 3 of 5: Answer 10 Key Questions",
-                "post_url": "/wizard/questions1",
-                "error": f"Failed to generate follow-up questions: {exc}",
-            },
-            status_code=500,
-        )
-    request.session["questions_round2"] = followups
-    return RedirectResponse(url="/wizard/questions2", status_code=303)
-
-
-@app.get("/wizard/questions2", response_class=HTMLResponse)
-async def wizard_questions2(request: Request):
-    """Display the second adaptive question round."""
-    resp = require_user(request)
-    if resp:
-        return resp
-    questions = request.session.get("questions_round2", [])
-    return templates.TemplateResponse(
-        "questions.html",
-        {
-            "request": request,
-            "questions": questions,
-            "step": "Step 4 of 5: Answer Follow-Up Questions",
-            "post_url": "/wizard/questions2",
-        },
-    )
-
-
-@app.post("/wizard/questions2")
-async def wizard_questions2_post(request: Request):
-    """Handle answers from the second round of questions."""
-    resp = require_user(request)
-    if resp:
-        return resp
-    form = await request.form()
-    questions = request.session.get("questions_round2", [])
-    answers = []
-    for i, q in enumerate(questions, 1):
-        ans = form.get(f"q{i}")
-        if not ans:
-            return templates.TemplateResponse(
-                "questions.html",
-                {
-                    "request": request,
-                    "questions": questions,
-                    "step": "Step 4 of 5: Answer Follow-Up Questions",
-                    "post_url": "/wizard/questions2",
-                    "error": "Please answer all questions",
-                },
-                status_code=400,
-            )
-        ctx = form.get(f"q{i}_context", "")
-        answers.append({"question": q, "answer": ans, "context": ctx})
-    request.session["answers_round2"] = answers
-    return RedirectResponse(url="/wizard/confirm", status_code=303)
-
-
-@app.get("/wizard/confirm", response_class=HTMLResponse)
-async def wizard_confirm(request: Request):
-    """Show a summary and let the user trigger the final analysis."""
-    resp = require_user(request)
-    if resp:
-        return resp
-    data = request.session.get("form", {})
-    return templates.TemplateResponse(
-        "confirm.html", {"request": request, "data": data}
-    )
-
-
-@app.post("/wizard/confirm")
-async def wizard_confirm_post(request: Request):
-    """Run the analysis and display the final markdown report."""
-    resp = require_user(request)
-    if resp:
-        return resp
-    data = request.session.get("form", {})
-    text_path = request.session.get("text_path")
-    if text_path and os.path.exists(text_path):
-        with open(text_path, "r", encoding="utf-8") as f:
-            data["extracted_text"] = f.read()
-    else:
-        data["extracted_text"] = ""
-    data["context_answers"] = request.session.get("context_answers", [])
-    qa = (
-        request.session.get("context_answers", [])
-        + request.session.get("answers_round1", [])
-        + request.session.get("answers_round2", [])
-    )
-    report_md = await analyze(data, qa)
     html_report = markdown.markdown(report_md)
     html_report = bleach.clean(
         html_report,
-        tags=bleach.sanitizer.ALLOWED_TAGS
-        + ["p", "h1", "h2", "h3", "table", "tr", "th", "td"],
+        tags=bleach.sanitizer.ALLOWED_TAGS + ["p", "h1", "h2", "h3", "table", "tr", "th", "td"],
         attributes={"a": ["href", "title"], "img": ["src", "alt"]},
     )
-    request.session.clear()
     return templates.TemplateResponse(
         "report.html", {"request": request, "report": html_report}
     )
+
+
 
 
 @app.get("/admin", response_class=HTMLResponse)

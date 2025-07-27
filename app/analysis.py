@@ -231,6 +231,24 @@ async def extract_structured_data(text: str) -> dict:
     return await asyncio.to_thread(run)
 
 
+async def analyze_document(text: str) -> str:
+    """Analyze a single document using the simplified prompt."""
+
+    prompt = prompts.PROMPTS["simple_document"].format(data=text[:4000])
+
+    def run():
+        try:
+            return _call_openai(prompt)
+        except Exception as exc:
+            logger.error("Document analysis failed: %s", exc, exc_info=True)
+            raise RuntimeError(f"OpenAI API error: {exc}")
+
+    report = await asyncio.to_thread(run)
+    log_submission({"extracted_text": text[:200]}, report, 0.0)
+    await send_email(report)
+    return report
+
+
 async def analyze(data: dict, qa: list | None = None) -> str:
     """Run the full multi-part analysis and return a markdown report."""
 
