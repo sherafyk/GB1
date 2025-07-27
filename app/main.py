@@ -190,9 +190,14 @@ async def wizard_upload_post(request: Request, files: List[UploadFile] = File(..
             status_code=500,
         )
     html_report = markdown.markdown(report_md)
+    # ``bleach.sanitizer.ALLOWED_TAGS`` is a ``frozenset`` so we use ``union``
+    # to add the extra tags instead of concatenation, which would raise a
+    # ``TypeError``.
+    extra_tags = {"p", "h1", "h2", "h3", "table", "tr", "th", "td"}
+    allowed_tags = bleach.sanitizer.ALLOWED_TAGS.union(extra_tags)
     html_report = bleach.clean(
         html_report,
-        tags=bleach.sanitizer.ALLOWED_TAGS + ["p", "h1", "h2", "h3", "table", "tr", "th", "td"],
+        tags=allowed_tags,
         attributes={"a": ["href", "title"], "img": ["src", "alt"]},
     )
     return templates.TemplateResponse(
